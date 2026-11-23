@@ -11,6 +11,7 @@ describe('Catálogos de permisos y roles', () => {
     expect(PERMISSION_CATALOGS.every((catalog) => catalog.length > 0)).toBe(true);
     expect(PERMISSIONS.length).toBe(PERMISSION_CATALOGS.reduce((total, catalog) => total + catalog.length, 0));
     expect(PERMISSIONS.some((permission) => permission.key === 'inventory:manage-products')).toBe(true);
+    expect(PERMISSIONS.some((permission) => permission.key === 'inventory:register-exit')).toBe(true);
   });
 
   it('no repite claves de permisos y todas siguen el formato modulo:accion', () => {

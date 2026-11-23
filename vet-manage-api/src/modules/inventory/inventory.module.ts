@@ -3,10 +3,12 @@ import { PrismaModule } from '../../infrastructure/database/prisma/prisma.module
 import { IdentityModule } from '../identity/identity.module.js';
 import { InventoryController } from './inventory.controller.js';
 import { InventoryService } from './services/inventory.service.js';
+import { SalesController } from '../sales/sales.controller.js';
+import { SalesService } from '../sales/services/sales.service.js';
 
 @Module({
   imports: [PrismaModule, IdentityModule],
-  controllers: [InventoryController],
-  providers: [InventoryService],
+  controllers: [InventoryController, SalesController],
+  providers: [InventoryService, SalesService],
 })
 export class InventoryModule {}

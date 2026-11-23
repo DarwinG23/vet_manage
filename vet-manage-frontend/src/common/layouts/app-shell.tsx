@@ -36,6 +36,11 @@ const mainNavigation: NavItem[] = [
   { label: 'Clientes', to: '/clients', icon: UsersIcon, permission: 'clients:read' },
 ];
 
+const salesNavigation: NavItem[] = [
+  { label: 'Nueva venta', to: '/inventory/sales/new', icon: WalletIcon, permission: 'inventory:register-exit' },
+  { label: 'Historial de ventas', to: '/inventory/sales', icon: WalletIcon, permission: 'inventory:read' },
+];
+
 const schedulingIcons: Record<string, NavItem['icon']> = {
   resources: SearchIcon,
   'work-schedules': CalendarIcon,
@@ -98,6 +103,12 @@ export function AppShell() {
           ))}
 
           <span className="sidebar-nav__label">Operación</span>
+          {visible(salesNavigation).map(({ label, to, icon: ItemIcon }) => (
+            <NavLink key={to} to={to} className={linkClass('sidebar-link')}>
+              <ItemIcon size={18} />
+              <span>{label}</span>
+            </NavLink>
+          ))}
           {visibleScheduling.length > 0 && (
             <>
               <button
