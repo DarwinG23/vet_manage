@@ -21,6 +21,8 @@ export type Product = {
   description?: string | null;
   unitPrice: string;
   stock: number;
+  // HU-03: umbral de inventario bajo; null cuando aún no se configuró.
+  minimumStock: number | null;
   category: CatalogItem;
   brand: CatalogItem;
   createdAt: string;

@@ -42,6 +42,13 @@ export const inventoryApi = {
   updateProduct(id: string, draft: ProductDraft) {
     return patchJson<Product, ProductDraft>(`/inventory/products/${id}`, draft);
   },
+  // HU-03: configura o actualiza solo el stock mínimo del producto.
+  updateProductMinimumStock(id: string, minimumStock: number) {
+    return patchJson<{ id: string; minimumStock: number }, { minimumStock: number }>(
+      `/inventory/products/${id}/minimum-stock`,
+      { minimumStock },
+    );
+  },
   createCategory(name: string) {
     return postJson<InventoryCategory, { name: string }>('/inventory/categories', { name });
   },

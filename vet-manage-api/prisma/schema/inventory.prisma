@@ -34,6 +34,7 @@ model Product {
   description String?  @db.Text
   unitPrice   Decimal  @map("unit_price") @db.Decimal(12, 2)
   stock       Int      @default(0)
+  minimumStock Int?    @map("minimum_stock")
   categoryId  String   @map("category_id") @db.Uuid
   brandId     String   @map("brand_id") @db.Uuid
   isActive    Boolean  @default(true) @map("is_active")

@@ -35,6 +35,28 @@ describe('inventoryApi VAT contract', () => {
   });
 });
 
+describe('inventoryApi.updateProductMinimumStock (HU-03)', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('envía el nuevo stock mínimo al endpoint dedicado del producto', async () => {
+    vi.mocked(patchJson).mockResolvedValue({ id: 'product-1', minimumStock: 10 } as never);
+
+    await expect(inventoryApi.updateProductMinimumStock('product-1', 10)).resolves.toEqual({
+      id: 'product-1',
+      minimumStock: 10,
+    });
+    expect(patchJson).toHaveBeenCalledWith('/inventory/products/product-1/minimum-stock', { minimumStock: 10 });
+  });
+
+  it('permite guardar 0 como umbral configurado', async () => {
+    vi.mocked(patchJson).mockResolvedValue({ id: 'product-1', minimumStock: 0 } as never);
+
+    await inventoryApi.updateProductMinimumStock('product-1', 0);
+
+    expect(patchJson).toHaveBeenCalledWith('/inventory/products/product-1/minimum-stock', { minimumStock: 0 });
+  });
+});
+
 describe('inventoryApi.listProducts', () => {
   beforeEach(() => vi.clearAllMocks());
 

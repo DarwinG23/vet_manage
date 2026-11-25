@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useToast } from '../../../common/components/toast-context';
+import { formatMinimumStock } from '../schemas/minimum-stock';
 import { inventoryApi } from '../services/inventory-api';
 import type { Product } from '../types';
 
@@ -62,6 +63,7 @@ export function ProductDetailPage() {
                 <tr><th scope="row">Descripción</th><td>{product.description || 'Sin descripción'}</td></tr>
                 <tr><th scope="row">Precio unitario</th><td className="price-cell">${Number(product.unitPrice).toFixed(2)}</td></tr>
                 <tr><th scope="row">Existencias</th><td>{product.stock}</td></tr>
+                <tr><th scope="row">Stock mínimo</th><td>{formatMinimumStock(product.minimumStock)}</td></tr>
                 <tr><th scope="row">Categoría</th><td>{product.category.name}</td></tr>
                 <tr><th scope="row">Marca</th><td>{product.brand.name}</td></tr>
               </tbody>
