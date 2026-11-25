@@ -21,6 +21,7 @@ const product: Product = {
   description: null,
   unitPrice: '13.40',
   stock: 0,
+  minimumStock: null,
   category: { id: 'category-1', name: 'Juguetes' },
   brand: { id: 'brand-1', name: 'Kong' },
   createdAt: '2026-11-19T00:00:00.000Z',

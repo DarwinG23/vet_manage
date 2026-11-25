@@ -30,6 +30,10 @@ describe('InventoryController RBAC (HU-01)', () => {
     expect(permissionOf('updateCategoryVat')).toEqual(['inventory:configure-vat']);
   });
 
+  it('protects minimum stock updates with inventory:manage-products (HU-03)', () => {
+    expect(permissionOf('updateProductMinimumStock')).toEqual(['inventory:manage-products']);
+  });
+
   it('accepts a UUID and rejects a malformed category id', async () => {
     const pipe = new ParseUUIDPipe();
     const metadata: ArgumentMetadata = { type: 'param', data: 'id', metatype: String };
@@ -52,6 +56,28 @@ describe('InventoryController RBAC (HU-01)', () => {
       data: category,
     });
     expect(updateCategoryVat).toHaveBeenCalledWith('category-1', '12.5');
+  });
+
+  it('returns minimum stock updates with the message for registration or update (HU-03)', async () => {
+    const updateProductMinimumStock = vi.fn()
+      .mockResolvedValueOnce({ id: 'product-1', minimumStock: 10, isFirstConfiguration: true })
+      .mockResolvedValueOnce({ id: 'product-1', minimumStock: 20, isFirstConfiguration: false });
+    const controller = new InventoryController({ updateProductMinimumStock } as never);
+
+    await expect(controller.updateProductMinimumStock('product-1', { minimumStock: 10 })).resolves.toEqual({
+      statusCode: 200,
+      success: true,
+      message: 'Stock mínimo registrado correctamente',
+      data: { id: 'product-1', minimumStock: 10 },
+    });
+    await expect(controller.updateProductMinimumStock('product-1', { minimumStock: 20 })).resolves.toEqual({
+      statusCode: 200,
+      success: true,
+      message: 'Stock mínimo actualizado correctamente',
+      data: { id: 'product-1', minimumStock: 20 },
+    });
+    expect(updateProductMinimumStock).toHaveBeenNthCalledWith(1, 'product-1', 10);
+    expect(updateProductMinimumStock).toHaveBeenNthCalledWith(2, 'product-1', 20);
   });
 
   it('allows a user with the configured permission and rejects a user without it', async () => {

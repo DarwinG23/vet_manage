@@ -574,4 +574,93 @@ describe('InventoryService', () => {
       expect(tx.product.update).not.toHaveBeenCalled();
     });
   });
+
+  describe('updateProductMinimumStock (HU-03)', () => {
+    const PRODUCT_ID = '123e4567-e89b-12d3-a456-426614174000';
+
+    function createMinimumStockMock(initial: number | null) {
+      const product = { id: PRODUCT_ID, minimumStock: initial };
+      const tx = {
+        product: {
+          findFirst: vi.fn(async ({ where }: { where: { id: string; isActive: boolean } }) =>
+            where.id === PRODUCT_ID && where.isActive
+              ? { id: PRODUCT_ID, minimumStock: product.minimumStock }
+              : null),
+          update: vi.fn(async ({ where, data }: { where: { id: string }; data: { minimumStock: number } }) => {
+            if (where.id !== PRODUCT_ID) throw { code: 'P2025' };
+            product.minimumStock = data.minimumStock;
+            return { id: PRODUCT_ID, minimumStock: product.minimumStock };
+          }),
+        },
+      };
+      return { product, tx, prisma: { $transaction: vi.fn((callback) => callback(tx)) } };
+    }
+
+    it('configura por primera vez el stock mínimo en una transacción y solo ese campo', async () => {
+      const { prisma, tx, product } = createMinimumStockMock(null);
+      const service = new InventoryService(prisma as never);
+
+      await expect(service.updateProductMinimumStock(PRODUCT_ID, 10)).resolves.toEqual({
+        id: PRODUCT_ID, minimumStock: 10, isFirstConfiguration: true,
+      });
+      expect(tx.product.update).toHaveBeenCalledWith({
+        where: { id: PRODUCT_ID },
+        data: { minimumStock: 10 },
+        select: { id: true, minimumStock: true },
+      });
+      expect(product.minimumStock).toBe(10);
+    });
+
+    it('actualiza el stock mínimo existente y acepta 0 como umbral', async () => {
+      const { prisma, tx } = createMinimumStockMock(10);
+      const service = new InventoryService(prisma as never);
+
+      await expect(service.updateProductMinimumStock(PRODUCT_ID, '0')).resolves.toEqual({
+        id: PRODUCT_ID, minimumStock: 0, isFirstConfiguration: false,
+      });
+      expect(tx.product.update).toHaveBeenCalledWith(expect.objectContaining({ data: { minimumStock: 0 } }));
+    });
+
+    it.each([
+      ['vacío', ''],
+      ['letras', 'abc'],
+      ['símbolos', '$10'],
+      ['decimal', 2.5],
+      ['negativo', -5],
+    ])('rechaza el valor %s sin abrir transacción ni persistir', async (_caso, value) => {
+      const { prisma, tx, product } = createMinimumStockMock(10);
+      const service = new InventoryService(prisma as never);
+
+      await expect(service.updateProductMinimumStock(PRODUCT_ID, value))
+        .rejects.toMatchObject({ statusCode: 400 });
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+      expect(tx.product.update).not.toHaveBeenCalled();
+      expect(product.minimumStock).toBe(10);
+    });
+
+    it('responde 404 si el producto no existe o está inactivo', async () => {
+      const { prisma, tx } = createMinimumStockMock(10);
+      const service = new InventoryService(prisma as never);
+
+      await expect(service.updateProductMinimumStock('123e4567-e89b-12d3-a456-426614174999', 5))
+        .rejects.toMatchObject({ statusCode: 404, message: 'Producto no encontrado' });
+      expect(tx.product.update).not.toHaveBeenCalled();
+    });
+
+    it('devuelve el stock mínimo en el listado y en el detalle del producto', async () => {
+      const { prisma } = createPrismaMock();
+      const product = {
+        id: 'product-1', code: 'PR-001', name: 'Producto', description: null,
+        unitPrice: new Prisma.Decimal('25.50'), stock: 10, minimumStock: 5,
+        category: { id: 'category-1', name: 'Alimentos' },
+        brand: { id: 'brand-1', name: 'Dog Chow' }, createdAt: new Date('2026-01-01'),
+      };
+      prisma.product.findMany.mockResolvedValue([product]);
+      prisma.product.findFirst.mockResolvedValue({ ...product, minimumStock: null });
+      const service = new InventoryService(prisma as never);
+
+      await expect(service.listProducts()).resolves.toMatchObject([{ id: 'product-1', minimumStock: 5 }]);
+      await expect(service.getProduct('product-1')).resolves.toMatchObject({ id: 'product-1', minimumStock: null });
+    });
+  });
 });

@@ -10,6 +10,7 @@ import { CATEGORY_VAT_RATE_PATTERN } from '../dtos/update-category-vat.dto.js';
 import { validateBatchEntryInput } from './batch-entry-input.service.js';
 import type { ListProductsQueryDto } from '../dtos/list-products-query.dto.js';
 import { findExpirationAlerts, getExpirationAlertCutoff } from './expiration-alerts.service.js';
+import { validateMinimumStockInput } from './minimum-stock-input.service.js';
 import { validateProductInput } from './product-input.service.js';
 
 function contieneLiteral(valor: string) {
@@ -298,6 +299,36 @@ export class InventoryService {
     }
   }
 
+  // HU-03: configura o actualiza solo el stock mínimo del producto.
+  async updateProductMinimumStock(id: string, value: unknown) {
+    const validation = validateMinimumStockInput(value);
+    if (!validation.valid) {
+      throw ApiException.badRequest(validation.error);
+    }
+
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const product = await tx.product.findFirst({
+          where: { id, isActive: true },
+          select: { id: true, minimumStock: true },
+        });
+        if (!product) throw ApiException.notFound('Producto no encontrado');
+
+        const updated = await tx.product.update({
+          where: { id },
+          data: { minimumStock: validation.value },
+          select: { id: true, minimumStock: true },
+        });
+
+        return { ...updated, isFirstConfiguration: product.minimumStock === null };
+      });
+    } catch (error) {
+      if (error instanceof ApiException) throw error;
+      if (this.isNotFoundError(error)) throw ApiException.notFound('Producto no encontrado');
+      throw error;
+    }
+  }
+
   // HU-02: registra el lote y suma su cantidad al stock en una sola transacción.
   // Si algo falla, no se crea el lote ni cambian las existencias.
   async registerBatchEntry(input: RegisterBatchEntryDto) {
@@ -448,6 +479,7 @@ export class InventoryService {
     name: string;
     description: string | null;
     unitPrice: Prisma.Decimal;
+    minimumStock: number | null;
     category: { id: string; name: string };
     brand: { id: string; name: string };
     createdAt: Date;
