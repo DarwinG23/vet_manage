@@ -43,6 +43,14 @@ function createCategoryVatPrismaMock(initial: Array<{
 }
 
 function createPrismaMock() {
+  const defaultProductDetail = {
+    id: 'product-1', code: 'PR-001', name: 'Producto', description: null,
+    unitPrice: new Prisma.Decimal('25.50'), stock: 10, minimumStock: null,
+    category: { id: 'category-1', name: 'Alimentos' },
+    brand: { id: 'brand-1', name: 'Dog Chow' }, createdAt: new Date('2026-01-01'), batches: [],
+  };
+  const productFindFirst = vi.fn().mockResolvedValue(defaultProductDetail);
+  const transactionProductFindFirst = vi.fn().mockResolvedValue(defaultProductDetail);
   const tx = {
     category: {
       upsert: vi.fn().mockResolvedValue({ id: 'category-1' }),
@@ -55,6 +63,7 @@ function createPrismaMock() {
       update: vi.fn().mockResolvedValue({ id: 'brand-1', name: 'Royal Canin', description: null }),
     },
     product: {
+      findFirst: transactionProductFindFirst,
       create: vi.fn().mockResolvedValue({
         id: 'product-1', code: 'PR-001', name: 'Producto', description: null,
         unitPrice: new Prisma.Decimal('25.50'), category: { id: 'category-1', name: 'Alimentos' },
@@ -81,11 +90,7 @@ function createPrismaMock() {
       },
       product: {
         findMany: vi.fn().mockResolvedValue([]),
-        findFirst: vi.fn().mockResolvedValue({
-          id: 'product-1', code: 'PR-001', name: 'Producto', description: null,
-          unitPrice: new Prisma.Decimal('25.50'), category: { id: 'category-1', name: 'Alimentos' },
-          brand: { id: 'brand-1', name: 'Dog Chow' }, createdAt: new Date('2026-01-01'),
-        }),
+        findFirst: productFindFirst,
       },
     },
     batch: {
@@ -231,6 +236,142 @@ describe('InventoryService', () => {
       expect(prisma.product.findMany).toHaveBeenCalledWith(expect.objectContaining({
         where: { isActive: true, name: { contains: 'A\\_50\\%\\\\B', mode: 'insensitive' } },
       }));
+    });
+  });
+
+  describe('consulta de existencias (HU-20)', () => {
+    const productId = '123e4567-e89b-12d3-a456-426614174000';
+
+    function createEntryAndReadState() {
+      const product = {
+        id: productId,
+        code: 'PR-001',
+        name: 'Alimento para perro',
+        description: null,
+        unitPrice: new Prisma.Decimal('25.50'),
+        stock: 10,
+        minimumStock: 10,
+        category: { id: 'category-1', name: 'Alimentos' },
+        brand: { id: 'brand-1', name: 'Dog Chow' },
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        isActive: true,
+      };
+      const batches = [{
+        id: 'batch-1',
+        productId,
+        code: 'L-2026-001',
+        expirationDate: new Date('2027-10-23T00:00:00.000Z'),
+        initialQuantity: 10,
+        availableQuantity: 10,
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+      }];
+      const tx = {
+        product: {
+          findFirst: vi.fn(async ({ where, select }: {
+            where: { id: string; isActive?: boolean };
+            select?: { id: boolean };
+          }) => {
+            if (where.id !== product.id || (where.isActive && !product.isActive)) return null;
+            if (select) return { id: product.id };
+            return { ...product, batches: [...batches] };
+          }),
+          update: vi.fn(async ({ data }: { where: { id: string }; data: { stock: { increment: number } } }) => {
+            product.stock += data.stock.increment;
+            return { id: product.id, code: product.code, name: product.name, stock: product.stock };
+          }),
+        },
+        batch: {
+          create: vi.fn(async ({ data }: { data: {
+            productId: string;
+            code: string;
+            expirationDate: Date;
+            initialQuantity: number;
+            availableQuantity: number;
+          } }) => {
+            const batch = {
+              id: `batch-${batches.length + 1}`,
+              ...data,
+              createdAt: new Date('2026-01-02T00:00:00.000Z'),
+              updatedAt: new Date('2026-01-02T00:00:00.000Z'),
+            };
+            batches.push(batch);
+            return batch;
+          }),
+        },
+      };
+      return {
+        product,
+        batches,
+        tx,
+        prisma: { $transaction: vi.fn((callback: (client: typeof tx) => Promise<unknown>) => callback(tx)) },
+      };
+    }
+
+    it('reflects a HU-02 entry on the next query using the shared persisted state', async () => {
+      const { prisma, product, batches, tx } = createEntryAndReadState();
+      const service = new InventoryService(prisma as never);
+      const beforeRead = {
+        stock: product.stock,
+        minimumStock: product.minimumStock,
+        quantities: batches.map(({ availableQuantity }) => availableQuantity),
+      };
+
+      const beforeEntry = await service.getProduct(productId);
+
+      expect(beforeEntry.stock).toBe(10);
+      expect(beforeEntry.minimumStock).toBe(10);
+      expect(beforeEntry.batches).toHaveLength(1);
+      expect({
+        stock: product.stock,
+        minimumStock: product.minimumStock,
+        quantities: batches.map(({ availableQuantity }) => availableQuantity),
+      }).toEqual(beforeRead);
+
+      await service.registerBatchEntry({
+        productId,
+        code: 'L-2026-002',
+        expirationDate: '2027-10-24',
+        initialQuantity: 5,
+      });
+
+      const afterEntry = await service.getProduct(productId);
+
+      expect(afterEntry.stock).toBe(15);
+      expect(afterEntry.minimumStock).toBe(10);
+      expect(afterEntry.batches.map(({ availableQuantity }) => availableQuantity)).toEqual([10, 5]);
+      expect(afterEntry.batches.reduce((total, batch) => total + batch.availableQuantity, 0)).toBe(15);
+      expect(tx.batch.create).toHaveBeenCalledTimes(1);
+      expect(tx.product.update).toHaveBeenCalledTimes(1);
+      expect(product.minimumStock).toBe(10);
+    });
+
+    it('identifies an expired lot without hiding its registered quantity', async () => {
+      const { prisma, tx } = createPrismaMock();
+      tx.product.findFirst.mockResolvedValue({
+        id: productId, code: 'PR-001', name: 'Producto', description: null,
+        unitPrice: new Prisma.Decimal('25.50'), stock: 5, minimumStock: null,
+        category: { id: 'category-1', name: 'Alimentos' },
+        brand: { id: 'brand-1', name: 'Dog Chow' }, createdAt: new Date('2026-01-01'),
+        batches: [{
+          id: 'lot-expired', code: 'L-EXP', expirationDate: new Date('2026-11-18T00:00:00.000Z'), availableQuantity: 5,
+        }],
+      });
+      const service = new InventoryService(prisma as never);
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-11-19T12:00:00.000Z'));
+      try {
+        const result = await service.getProduct(productId);
+
+        expect(result.batches).toEqual([{
+          id: 'lot-expired', code: 'L-EXP', expirationDate: '2026-11-18', availableQuantity: 5,
+          expirationStatus: 'EXPIRED',
+        }]);
+        expect(result.stock).toBe(5);
+        expect(tx.product.update).not.toHaveBeenCalled();
+      } finally {
+        vi.useRealTimers();
+      }
     });
   });
 
@@ -387,23 +528,138 @@ describe('InventoryService', () => {
     expect(prisma.category.update).not.toHaveBeenCalled();
   });
 
-  it('loads a product with its category and brand', async () => {
-    const { prisma } = createPrismaMock();
+  it('loads a product with its original fields and all current batch inventory', async () => {
+    const { prisma, tx } = createPrismaMock();
+    const referenceDate = new Date('2026-11-19T12:00:00.000Z');
+    const batches = [
+      { id: 'lot-1', code: 'L-2026-001', expirationDate: new Date('2026-12-19T00:00:00.000Z'), availableQuantity: 10 },
+      { id: 'lot-2', code: 'L-2026-002', expirationDate: new Date('2027-01-19T00:00:00.000Z'), availableQuantity: 5 },
+    ];
+    tx.product.findFirst.mockResolvedValue({
+      id: 'product-1', code: 'PR-001', name: 'Producto', description: 'Descripción',
+      unitPrice: new Prisma.Decimal('25.50'), stock: 15, minimumStock: 10,
+      category: { id: 'category-1', name: 'Alimentos' },
+      brand: { id: 'brand-1', name: 'Dog Chow' }, createdAt: new Date('2026-01-01'), batches,
+    });
+    const service = new InventoryService(prisma as never);
+
+    vi.useFakeTimers();
+    vi.setSystemTime(referenceDate);
+    try {
+      const result = await service.getProduct('product-1');
+
+      expect(result).toMatchObject({
+        id: 'product-1', code: 'PR-001', name: 'Producto', description: 'Descripción',
+        unitPrice: '25.5', stock: 15, minimumStock: 10,
+        category: { id: 'category-1', name: 'Alimentos' },
+        brand: { id: 'brand-1', name: 'Dog Chow' },
+        batches: [
+          { id: 'lot-1', code: 'L-2026-001', expirationDate: '2026-12-19', availableQuantity: 10, expirationStatus: 'NOT_EXPIRED' },
+          { id: 'lot-2', code: 'L-2026-002', expirationDate: '2027-01-19', availableQuantity: 5, expirationStatus: 'NOT_EXPIRED' },
+        ],
+      });
+      expect(result.batches.reduce((total, batch) => total + batch.availableQuantity, 0)).toBe(15);
+      expect(prisma.$transaction).toHaveBeenCalledWith(
+        expect.any(Function),
+        { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
+      );
+      expect(tx.product.findFirst).toHaveBeenCalledWith({
+        where: { id: 'product-1', isActive: true },
+        include: {
+          category: true,
+          brand: true,
+          batches: {
+            select: { id: true, code: true, expirationDate: true, availableQuantity: true },
+            orderBy: [{ expirationDate: 'asc' }, { code: 'asc' }],
+          },
+        },
+      });
+      expect(prisma.product.findFirst).not.toHaveBeenCalled();
+      expect(tx.product.update).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('returns an active product with zero stock and includes a zero-quantity lot', async () => {
+    const { prisma, tx } = createPrismaMock();
+    tx.product.findFirst.mockResolvedValue({
+      id: 'product-1', code: 'PR-001', name: 'Producto', description: null,
+      unitPrice: new Prisma.Decimal('25.50'), stock: 0, minimumStock: 0,
+      category: { id: 'category-1', name: 'Alimentos' },
+      brand: { id: 'brand-1', name: 'Dog Chow' }, createdAt: new Date('2026-01-01'),
+      batches: [{ id: 'lot-empty', code: 'L-EMPTY', expirationDate: new Date('2027-01-01'), availableQuantity: 0 }],
+    });
     const service = new InventoryService(prisma as never);
 
     const result = await service.getProduct('product-1');
 
-    expect(result).toMatchObject({ id: 'product-1', category: { name: 'Alimentos' }, brand: { name: 'Dog Chow' } });
-    expect(prisma.product.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'product-1', isActive: true } }));
+    expect(result.stock).toBe(0);
+    expect(result.minimumStock).toBe(0);
+    expect(result.batches).toMatchObject([{ id: 'lot-empty', code: 'L-EMPTY', availableQuantity: 0 }]);
+    expect(tx.product.update).not.toHaveBeenCalled();
+  });
+
+  it('returns an active product with no batches and an unconfigured minimum stock', async () => {
+    const { prisma, tx } = createPrismaMock();
+    tx.product.findFirst.mockResolvedValue({
+      id: 'product-1', code: 'PR-001', name: 'Producto', description: null,
+      unitPrice: new Prisma.Decimal('25.50'), stock: 12, minimumStock: null,
+      category: { id: 'category-1', name: 'Alimentos' },
+      brand: { id: 'brand-1', name: 'Dog Chow' }, createdAt: new Date('2026-01-01'), batches: [],
+    });
+    const service = new InventoryService(prisma as never);
+
+    const result = await service.getProduct('product-1');
+
+    expect(result.stock).toBe(12);
+    expect(result.minimumStock).toBeNull();
+    expect(result.batches).toEqual([]);
+  });
+
+  it('does not mark a lot expiring today as expired and preserves its quantity', async () => {
+    const { prisma, tx } = createPrismaMock();
+    tx.product.findFirst.mockResolvedValue({
+      id: 'product-1', code: 'PR-001', name: 'Producto', description: null,
+      unitPrice: new Prisma.Decimal('25.50'), stock: 5, minimumStock: 10,
+      category: { id: 'category-1', name: 'Alimentos' },
+      brand: { id: 'brand-1', name: 'Dog Chow' }, createdAt: new Date('2026-01-01'),
+      batches: [{ id: 'lot-today', code: 'L-HOY', expirationDate: new Date('2026-11-19T00:00:00.000Z'), availableQuantity: 5 }],
+    });
+    const service = new InventoryService(prisma as never);
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-11-19T12:00:00.000Z'));
+    try {
+      const result = await service.getProduct('product-1');
+
+      expect(result.batches).toEqual([{
+        id: 'lot-today', code: 'L-HOY', expirationDate: '2026-11-19', availableQuantity: 5,
+        expirationStatus: 'NOT_EXPIRED',
+      }]);
+      expect(tx.product.update).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('returns 404 for a missing product without exposing persistence errors', async () => {
+    const { prisma, tx } = createPrismaMock();
+    tx.product.findFirst.mockResolvedValue(null);
+    const service = new InventoryService(prisma as never);
+
+    await expect(service.getProduct('missing')).rejects.toMatchObject({
+      statusCode: 404,
+      message: 'Producto no encontrado',
+    });
   });
 
   it('returns not found for an invalid product id format', async () => {
-    const { prisma } = createPrismaMock();
-    prisma.product.findFirst.mockRejectedValue({ code: 'P2023' });
+    const { prisma, tx } = createPrismaMock();
+    tx.product.findFirst.mockRejectedValue({ code: 'P2023' });
     const service = new InventoryService(prisma as never);
 
     await expect(service.getProduct('not-a-uuid')).rejects.toMatchObject({ statusCode: 404, message: 'Producto no encontrado' });
-    expect(prisma.product.findFirst).toHaveBeenCalled();
+    expect(tx.product.findFirst).toHaveBeenCalled();
   });
 
   it('updates a product and serializes its decimal price', async () => {
@@ -648,15 +904,15 @@ describe('InventoryService', () => {
     });
 
     it('devuelve el stock mínimo en el listado y en el detalle del producto', async () => {
-      const { prisma } = createPrismaMock();
+      const { prisma, tx } = createPrismaMock();
       const product = {
         id: 'product-1', code: 'PR-001', name: 'Producto', description: null,
         unitPrice: new Prisma.Decimal('25.50'), stock: 10, minimumStock: 5,
         category: { id: 'category-1', name: 'Alimentos' },
-        brand: { id: 'brand-1', name: 'Dog Chow' }, createdAt: new Date('2026-01-01'),
+        brand: { id: 'brand-1', name: 'Dog Chow' }, createdAt: new Date('2026-01-01'), batches: [],
       };
       prisma.product.findMany.mockResolvedValue([product]);
-      prisma.product.findFirst.mockResolvedValue({ ...product, minimumStock: null });
+      tx.product.findFirst.mockResolvedValue({ ...product, minimumStock: null });
       const service = new InventoryService(prisma as never);
 
       await expect(service.listProducts()).resolves.toMatchObject([{ id: 'product-1', minimumStock: 5 }]);

@@ -9,7 +9,7 @@ import { RegisterBatchEntryDto } from '../dtos/register-batch-entry.dto.js';
 import { CATEGORY_VAT_RATE_PATTERN } from '../dtos/update-category-vat.dto.js';
 import { validateBatchEntryInput } from './batch-entry-input.service.js';
 import type { ListProductsQueryDto } from '../dtos/list-products-query.dto.js';
-import { findExpirationAlerts, getExpirationAlertCutoff } from './expiration-alerts.service.js';
+import { findExpirationAlerts, getExpirationAlertCutoff, isExpirationDateExpired } from './expiration-alerts.service.js';
 import { validateMinimumStockInput } from './minimum-stock-input.service.js';
 import { validateProductInput } from './product-input.service.js';
 
@@ -202,12 +202,30 @@ export class InventoryService {
 
   async getProduct(id: string) {
     try {
-      const product = await this.prisma.product.findFirst({
-        where: { id, isActive: true },
-        include: { category: true, brand: true },
-      });
+      const referenceDate = new Date();
+      const product = await this.prisma.$transaction(
+        (tx) => tx.product.findFirst({
+          where: { id, isActive: true },
+          include: {
+            category: true,
+            brand: true,
+            batches: {
+              select: { id: true, code: true, expirationDate: true, availableQuantity: true },
+              orderBy: [{ expirationDate: 'asc' }, { code: 'asc' }],
+            },
+          },
+        }),
+        { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
+      );
       if (!product) throw ApiException.notFound('Producto no encontrado');
-      return this.serializeProduct(product);
+      return this.serializeProduct({
+        ...product,
+        batches: product.batches.map((batch) => ({
+          ...batch,
+          expirationDate: batch.expirationDate.toISOString().slice(0, 10),
+          expirationStatus: isExpirationDateExpired(batch.expirationDate, referenceDate) ? 'EXPIRED' as const : 'NOT_EXPIRED' as const,
+        })),
+      });
     } catch (error) {
       if (this.isNotFoundError(error)) throw ApiException.notFound('Producto no encontrado');
       throw error;
@@ -473,17 +491,7 @@ export class InventoryService {
       || errorText.includes('invalid value for argument');
   }
 
-  private serializeProduct(product: {
-    id: string;
-    code: string;
-    name: string;
-    description: string | null;
-    unitPrice: Prisma.Decimal;
-    minimumStock: number | null;
-    category: { id: string; name: string };
-    brand: { id: string; name: string };
-    createdAt: Date;
-  }) {
+  private serializeProduct<T extends { unitPrice: Prisma.Decimal }>(product: T): Omit<T, 'unitPrice'> & { unitPrice: string } {
     return {
       ...product,
       unitPrice: product.unitPrice.toString(),
