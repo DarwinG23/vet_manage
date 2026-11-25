@@ -1,5 +1,5 @@
 import { getJson, patchJson, postJson } from '../../../infrastructure/api/http-client';
-import type { BatchDetail, BatchEntryDraft, BatchEntryResult, CatalogItem, ExpirationAlert, InventoryCategory, Product, ProductDraft, ProductSearchFilters } from '../types';
+import type { BatchDetail, BatchEntryDraft, BatchEntryResult, CatalogItem, ExpirationAlert, InventoryCategory, Product, ProductDetail, ProductDraft, ProductSearchFilters } from '../types';
 
 export const inventoryApi = {
   listProducts(search = '', filters: ProductSearchFilters = {}) {
@@ -22,7 +22,7 @@ export const inventoryApi = {
     );
   },
   getProduct(id: string) {
-    return getJson<Product>(`/inventory/products/${id}`);
+    return getJson<ProductDetail>(`/inventory/products/${id}`);
   },
   getBatch(id: string) {
     return getJson<BatchDetail>(`/inventory/batches/${id}`);

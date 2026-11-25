@@ -27,7 +27,7 @@ const product: Product = {
   createdAt: '2026-11-19T00:00:00.000Z',
 };
 
-function renderPage(allowed = true) {
+function renderPage(canRead = true, canManage = canRead) {
   return render(
     <MemoryRouter>
       <ToastContext.Provider value={{ showToast, dismissToast: vi.fn(), confirm: vi.fn(async () => true) }}>
@@ -36,7 +36,9 @@ function renderPage(allowed = true) {
           session: null,
           login: vi.fn(),
           logout: vi.fn(),
-          hasPermission: () => allowed,
+          hasPermission: (permission) => permission === 'inventory:read'
+            ? canRead
+            : permission === 'inventory:manage-products' && canManage,
         }}>
           <RequirePermission permission="inventory:read">
             <ProductsPage />
@@ -200,6 +202,19 @@ describe('ProductsPage', () => {
     expect(inventoryApi.listProducts).not.toHaveBeenCalled();
     expect(inventoryApi.listCategories).not.toHaveBeenCalled();
     expect(inventoryApi.listBrands).not.toHaveBeenCalled();
+  });
+
+  it('permite consultar el detalle y conserva el stock cero para quien solo tiene permiso de lectura', async () => {
+    renderPage(true, false);
+
+    await screen.findByText(product.name);
+
+    expect(screen.getByRole('cell', { name: '0' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Consultar' })).toHaveAttribute(
+      'href', '/inventory/products/product-1',
+    );
+    expect(screen.queryByRole('link', { name: 'Editar' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: '＋ Nuevo producto' })).not.toBeInTheDocument();
   });
 
   it('envía el código completo de lote al pulsar Enter en su campo', async () => {
