@@ -12,11 +12,28 @@ context: |
   publicados al host. TypeScript usa ESM y las importaciones existentes
   incluyen extensión .js.
 
+  Documentación funcional:
+  - Las historias de usuario están en `docs/modulo-*/historias-usuario/*.md`,
+    donde el nombre del archivo puede comenzar con el número de la HU.
+  - Los diagramas de módulos están en `docs/modulo-*/diagramas/*.md`.
+  - Identificar el módulo y el número de HU a partir del cambio solicitado
+    antes de seleccionar la documentación correspondiente.
+  - La historia de usuario y sus criterios de aceptación son la fuente
+    funcional prioritaria para el alcance del cambio.
+  - Los diagramas complementan el diseño; no sustituyen ni amplían los
+    criterios de aceptación sin una solicitud explícita.
+
 rules:
   proposal:
-    - Mantener el alcance limitado a la fundación técnica; no definir entidades de negocio.
+    - Mantener el alcance limitado al cambio solicitado y no añadir funcionalidades no aprobadas.
+    - Si el cambio implementa una HU, localizar su archivo por número y módulo,
+      leer su historia y conservar todos sus criterios de aceptación.
+    - Resumir en la propuesta dependencias, actor, requisitos vinculados y resultados esperados.
   design:
     - Documentar puertos, variables de entorno y comandos de arranque.
+    - Cuando corresponda, revisar los diagramas del módulo asociado y reflejar
+      las entidades, componentes y relaciones que realmente existan.
+    - Relacionar el diseño con los escenarios de aceptación de la HU.
   tasks:
     - Cada tarea debe ser verificable de forma independiente.
 

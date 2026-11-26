@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { CatalogInlineCreate } from '../components/catalog-inline-create';
+import { formatMinimumStock, validateMinimumStockInput } from '../schemas/minimum-stock';
 import { inventoryApi } from '../services/inventory-api';
 import type { CatalogItem, ProductDraft } from '../types';
 import { useToast } from '../../../common/components/toast-context';
@@ -19,6 +20,11 @@ export function ProductFormPage() {
   const { showToast } = useToast();
   const [saving, setSaving] = useState(false);
   const [inlineCreate, setInlineCreate] = useState<'category' | 'brand' | null>(null);
+  // HU-03: el stock mínimo se configura solo sobre un producto existente.
+  const [minimumStockValue, setMinimumStockValue] = useState<number | null>(null);
+  const [minimumStockDraft, setMinimumStockDraft] = useState('');
+  const [minimumStockError, setMinimumStockError] = useState<string | null>(null);
+  const [savingMinimumStock, setSavingMinimumStock] = useState(false);
 
   useEffect(() => {
     Promise.all([inventoryApi.listCategories(), inventoryApi.listBrands()]).then(async ([loadedCategories, loadedBrands]) => {
@@ -26,6 +32,8 @@ export function ProductFormPage() {
       if (id) {
         const loadedProduct = await inventoryApi.getProduct(id);
         setDraft({ code: loadedProduct.code, name: loadedProduct.name, description: loadedProduct.description ?? '', unitPrice: loadedProduct.unitPrice, category: { id: loadedProduct.category.id }, brand: { id: loadedProduct.brand.id } });
+        setMinimumStockValue(loadedProduct.minimumStock);
+        setMinimumStockDraft(loadedProduct.minimumStock === null ? '' : String(loadedProduct.minimumStock));
       }
     }).catch(() => showToast('No se pudieron cargar las categorías y marcas.', 'error'));
   }, [id, showToast]);
@@ -47,6 +55,24 @@ export function ProductFormPage() {
     else { setBrands((current) => [...current, item].sort((a, b) => a.name.localeCompare(b.name))); }
     setDraft((current) => ({ ...current, [type]: { id: item.id } }));
     setInlineCreate(null);
+  }
+
+  async function saveMinimumStock() {
+    if (!id) return;
+    const validation = validateMinimumStockInput(minimumStockDraft);
+    if (!validation.valid) { setMinimumStockError(validation.error); return; }
+    setMinimumStockError(null); setSavingMinimumStock(true);
+    try {
+      const wasConfigured = minimumStockValue !== null;
+      const updated = await inventoryApi.updateProductMinimumStock(id, validation.value);
+      setMinimumStockValue(updated.minimumStock);
+      setMinimumStockDraft(String(updated.minimumStock));
+      showToast(wasConfigured ? 'Stock mínimo actualizado correctamente' : 'Stock mínimo registrado correctamente', 'success');
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : 'No se pudo guardar el stock mínimo.';
+      setMinimumStockError(message);
+      showToast(message, 'error');
+    } finally { setSavingMinimumStock(false); }
   }
 
   async function submit(event: FormEvent) {
@@ -89,6 +115,7 @@ export function ProductFormPage() {
         <div className="form-section"><div className="form-section__heading"><span className="section-number">01</span><div><h3>Identificación</h3><p>Usa un código único para encontrar el producto rápidamente.</p></div></div><div className="form-grid"><Field label="Código del producto" required error={errors.code}><input value={draft.code} onChange={(event) => update('code', event.target.value)} placeholder="Ej. PR-001" aria-invalid={Boolean(errors.code)} /></Field><Field label="Nombre del producto" required error={errors.name}><input value={draft.name} onChange={(event) => update('name', event.target.value)} placeholder="Ej. Alimento para perro" aria-invalid={Boolean(errors.name)} /></Field><Field className="form-grid__full" label="Descripción" required error={errors.description}><textarea value={draft.description} onChange={(event) => update('description', event.target.value)} placeholder="Describe brevemente el producto" rows={3} aria-invalid={Boolean(errors.description)} /></Field></div></div>
         <div className="form-section"><div className="form-section__heading"><span className="section-number">02</span><div><h3>Clasificación</h3><p>Relaciona el producto con una categoría y una marca.</p></div></div><div className="form-grid"><CatalogField label="Categoría" value={draft.category.id ?? ''} options={categories} error={errors.category} onChange={(value) => selectReference('category', value)} onCreate={() => setInlineCreate('category')} />{inlineCreate === 'category' && <CatalogInlineCreate label="Categoría" onCreate={(name) => createReference('category', name)} onCancel={() => setInlineCreate(null)} />}<CatalogField label="Marca" value={draft.brand.id ?? ''} options={brands} error={errors.brand} onChange={(value) => selectReference('brand', value)} onCreate={() => setInlineCreate('brand')} />{inlineCreate === 'brand' && <CatalogInlineCreate label="Marca" onCreate={(name) => createReference('brand', name)} onCancel={() => setInlineCreate(null)} />}</div></div>
         <div className="form-section"><div className="form-section__heading"><span className="section-number">03</span><div><h3>Precio</h3><p>Define el precio unitario de referencia del producto.</p></div></div><div className="form-grid"><Field label="Precio unitario" required error={errors.unitPrice} hint="Debe ser mayor que cero"><div className="currency-input"><span>$</span><input type="number" min="0.01" step="0.01" value={draft.unitPrice} onChange={(event) => update('unitPrice', event.target.value)} placeholder="0.00" aria-invalid={Boolean(errors.unitPrice)} /></div></Field></div></div>
+        {isEditing && <div className="form-section"><div className="form-section__heading"><span className="section-number">04</span><div><h3>Stock mínimo</h3><p>Define el umbral de inventario bajo a partir del cual se debe reabastecer.</p></div></div><div className="form-grid"><Field label="Stock mínimo" hint={`Valor actual: ${formatMinimumStock(minimumStockValue)}`} error={minimumStockError ?? undefined}><input type="text" inputMode="numeric" autoComplete="off" value={minimumStockDraft} onChange={(event) => { setMinimumStockDraft(event.target.value); setMinimumStockError(null); }} placeholder="Ej. 10" aria-label="Stock mínimo" aria-invalid={Boolean(minimumStockError)} /></Field></div><div className="inline-actions" style={{ marginTop: '16px' }}><button className="button button--secondary" type="button" onClick={() => void saveMinimumStock()} disabled={savingMinimumStock}>{savingMinimumStock ? 'Guardando…' : 'Guardar stock mínimo'}</button></div></div>}
         <div className="form-actions"><Link className="button button--ghost" to="/inventory/products">Cancelar</Link><button className="button button--primary" type="submit" disabled={saving}>{saving ? (isEditing ? 'Guardando…' : 'Registrando…') : (isEditing ? 'Guardar cambios' : 'Registrar producto')}</button></div>
       </form>
     </section>
