@@ -14,6 +14,7 @@ El módulo contempla:
 - Detalle de pago.
 - Devoluciones de productos.
 - Notificaciones relacionadas con la operación.
+- Órdenes de compra a proveedores (HU-27).
 
 La clase `Usuario` se representa como una referencia externa al módulo de
 identidad.
@@ -188,6 +189,33 @@ Define la clasificación y los destinatarios de una notificación.
 | `rolesDestino` | List\<String\> | Roles que pueden recibirla. |
 | `activo` | Boolean | Indica si el tipo está activo. |
 
+### OrdenCompra
+
+Representa el abastecimiento solicitado a un proveedor antes de recibir los
+productos (HU-27).
+
+| Atributo | Tipo | Descripción |
+|---|---|---|
+| `id` | UUID | Identificador único (PK). |
+| `numero` | Integer | Número secuencial y único; se muestra como `OC-000001`. |
+| `fecha` | DateTime | Fecha y hora de registro de la orden. |
+| `proveedorId` | UUID | Referencia a `Proveedor` (FK). |
+| `estado` | EstadoOrdenCompra | Estado de la orden. |
+| `total` | Decimal | Suma de los subtotales de la orden. |
+
+### DetalleOrdenCompra
+
+Representa un producto solicitado en una orden de compra (HU-27).
+
+| Atributo | Tipo | Descripción |
+|---|---|---|
+| `id` | UUID | Identificador único (PK). |
+| `ordenCompraId` | UUID | Referencia a `OrdenCompra` (FK). |
+| `productoId` | UUID | Referencia a `Producto` (FK). |
+| `cantidad` | Integer | Cantidad solicitada, mayor que cero. |
+| `precioUnitario` | Decimal | Precio unitario acordado, mayor que cero. |
+| `subtotal` | Decimal | `cantidad × precioUnitario`. |
+
 ### Usuario (referencia externa)
 
 Representa al usuario del módulo de identidad que crea, recibe o consulta
@@ -244,6 +272,12 @@ con el modelo `User` definido en `prisma/schema/identity.prisma`.
 | `MEDIA` | Requiere atención normal. |
 | `BAJA` | Tiene baja urgencia. |
 
+### EstadoOrdenCompra
+
+| Valor | Descripción |
+|---|---|
+| `PENDIENTE` | La orden fue registrada y aún no se reciben los productos. |
+
 ## Relaciones
 
 | Relación | Cardinalidad | Descripción |
@@ -263,6 +297,9 @@ con el modelo `User` definido en `prisma/schema/identity.prisma`.
 | `TipoNotificacion` → `Notificacion` | 1:N | Un tipo puede clasificar varias notificaciones. |
 | `Usuario` → `Notificacion` | 1:N | Un usuario puede recibir varias notificaciones. |
 | `Prioridad` → `Notificacion` | 1:N | Cada notificación tiene una prioridad. |
+| `Proveedor` → `OrdenCompra` | 1:N | Un proveedor puede recibir varias órdenes de compra. |
+| `OrdenCompra` → `DetalleOrdenCompra` | 1:N | Una orden contiene uno o varios productos. |
+| `Producto` → `DetalleOrdenCompra` | 1:N | Un producto puede solicitarse en varias órdenes. |
 
 ## Consideraciones para la implementación
 
@@ -277,3 +314,5 @@ con el modelo `User` definido en `prisma/schema/identity.prisma`.
 - Las operaciones que modifiquen existencias deben ejecutarse dentro de una
   transacción para mantener consistentes el saldo anterior, el saldo resultante
   y el movimiento registrado.
+- Crear una orden de compra no modifica existencias; el stock se actualiza al
+  registrar la recepción de la orden.

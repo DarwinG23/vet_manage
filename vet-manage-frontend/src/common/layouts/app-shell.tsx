@@ -36,6 +36,11 @@ const mainNavigation: NavItem[] = [
   { label: 'Clientes', to: '/clients', icon: UsersIcon, permission: 'clients:read' },
 ];
 
+const salesNavigation: NavItem[] = [
+  { label: 'Nueva venta', to: '/inventory/sales/new', icon: WalletIcon, permission: 'inventory:register-exit' },
+  { label: 'Historial de ventas', to: '/inventory/sales', icon: WalletIcon, permission: 'inventory:read' },
+];
+
 const schedulingIcons: Record<string, NavItem['icon']> = {
   resources: SearchIcon,
   'work-schedules': CalendarIcon,
@@ -56,15 +61,17 @@ const schedulingNavigation: NavItem[] = SCHEDULING_SECTIONS.map(({ label, path, 
 const inventoryNavigation: NavItem[] = [
   { label: 'Productos', to: '/inventory/products', icon: PackageIcon, permission: 'inventory:read' },
   { label: 'Proveedores', to: '/inventory/suppliers', icon: UsersIcon, permission: 'suppliers:read' },
+  { label: 'Órdenes de compra', to: '/inventory/purchase-orders', icon: WalletIcon, permission: 'purchase-orders:read' },
   { label: 'Categorías', to: '/inventory/categories', icon: FolderIcon, permission: 'inventory:read' },
   { label: 'Marcas', to: '/inventory/brands', icon: TagIcon, permission: 'inventory:read' },
   { label: 'Entrada de lotes', to: '/inventory/batches/new', icon: BoxIcon, permission: 'inventory:register-entry' },
-  { label: 'Baja de lotes', to: '/inventory/write-offs/new', icon: BoxIcon, permission: 'inventory:register-exit' },
+  { label: 'Baja de lotes', to: '/inventory/write-offs/new', icon: BoxIcon, permission: 'inventory:register-write-off' },
   { label: 'Historial de movimientos', to: '/inventory/movements', icon: FolderIcon, permission: 'inventory:read-reports' },
 ];
 
 const administrationNavigation: NavItem[] = [
   { label: 'Usuarios', to: '/users', icon: IdCardIcon, permission: 'users:read' },
+  { label: 'Permisos por rol', to: '/roles/permissions', icon: ShieldIcon, permission: 'roles:manage-permissions' },
 ];
 
 const linkClass = (base: string) => ({ isActive }: { isActive: boolean }) =>
@@ -100,6 +107,12 @@ export function AppShell() {
           ))}
 
           <span className="sidebar-nav__label">Operación</span>
+          {visible(salesNavigation).map(({ label, to, icon: ItemIcon }) => (
+            <NavLink key={to} to={to} className={linkClass('sidebar-link')}>
+              <ItemIcon size={18} />
+              <span>{label}</span>
+            </NavLink>
+          ))}
           {visibleScheduling.length > 0 && (
             <>
               <button

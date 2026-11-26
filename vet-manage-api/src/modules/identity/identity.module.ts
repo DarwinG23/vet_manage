@@ -6,11 +6,13 @@ import { AuditModule } from '../audit/audit.module.js';
 import { RedisModule } from '../../infrastructure/redis/redis.module.js';
 import { UsersController } from './users.controller.js';
 import { AuthController } from './auth.controller.js';
+import { RolePermissionsController } from './role-permissions.controller.js';
 import { ClientRegistrationController } from './routes/clients.controller.js';
 import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
 import { PermissionsGuard } from './guards/permissions.guard.js';
 import { AccessService } from './services/access.service.js';
 import { AuthService } from './services/auth.service.js';
+import { ChangePasswordService } from './services/change-password.service.js';
 import { IdentityBootstrap } from './services/identity-bootstrap.service.js';
 import { InitialAdminService } from './services/initial-admin.service.js';
 import { PasswordHasher } from './services/password-hasher.service.js';
@@ -21,7 +23,11 @@ import { UserQueryRepository } from './repositories/user-query.repository.js';
 import { UserQueryService } from './services/user-query.service.js';
 import { UserRegistrationService } from './services/user-registration.service.js';
 import { ClientRegistrationService } from './services/client-registration.service.js';
+import { ChangeUserStatusService } from './services/change-user-status.service.js';
 import { UserRoleAssignmentService } from './services/user-role-assignment.service.js';
+import { UserDetailService } from './services/user-detail.service.js';
+import { UpdateUserService } from './services/update-user.service.js';
+import { RolePermissionsService } from './services/role-permissions.service.js';
 
 @Module({
   imports: [
@@ -33,7 +39,7 @@ import { UserRoleAssignmentService } from './services/user-role-assignment.servi
       useFactory: (config: ConfigService) => ({ secret: config.getOrThrow<string>('auth.jwtSecret') }),
     }),
   ],
-  controllers: [AuthController, UsersController, ClientRegistrationController],
+  controllers: [AuthController, UsersController, RolePermissionsController, ClientRegistrationController],
   providers: [
     RbacCatalogSynchronizer,
     InitialAdminService,
@@ -42,12 +48,17 @@ import { UserRoleAssignmentService } from './services/user-role-assignment.servi
     TokenService,
     AccessService,
     AuthService,
+    ChangePasswordService,
     SessionService,
     UserRegistrationService,
     ClientRegistrationService,
     UserQueryRepository,
     UserQueryService,
     UserRoleAssignmentService,
+    ChangeUserStatusService,
+    UserDetailService,
+    UpdateUserService,
+    RolePermissionsService,
     JwtAuthGuard,
     PermissionsGuard,
   ],

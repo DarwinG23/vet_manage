@@ -123,3 +123,20 @@ export type InventoryMovementsPage = {
   total: number;
   totalPages: number;
 };
+export type SaleDraft = { items: Array<{ productId: string; quantity: number }> };
+
+export type Sale = {
+  id: string;
+  total: string;
+  createdAt: string;
+  cashier: string;
+  items: Array<{
+    id: string;
+    productId: string;
+    productName: string;
+    batchCode: string;
+    quantity: number;
+    unitPrice: string;
+    subtotal: string;
+  }>;
+};

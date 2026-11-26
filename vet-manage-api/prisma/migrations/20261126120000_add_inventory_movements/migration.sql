@@ -1,3 +1,7 @@
+-- Compatibilidad con HU-08: si ventas ya creó la tabla compartida, no se duplica.
+DO $migration$
+BEGIN
+  IF to_regclass('public.inventory_movements') IS NULL THEN
 CREATE TYPE "TipoMovimiento" AS ENUM ('ENTRADA', 'VENTA', 'USO_CLINICO', 'AJUSTE', 'BAJA');
 
 CREATE TABLE "inventory_movements" (
@@ -27,3 +31,6 @@ ALTER TABLE "inventory_movements" ADD CONSTRAINT "inventory_movements_batch_id_f
     FOREIGN KEY ("batch_id") REFERENCES "batches"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "inventory_movements" ADD CONSTRAINT "inventory_movements_user_id_fkey"
     FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+  END IF;
+END
+$migration$;

@@ -42,7 +42,7 @@ function renderPage(allowed = true) {
       <AuthContext.Provider value={{ status: 'authenticated', session: null, login: vi.fn(), logout: vi.fn(), hasPermission: () => allowed }}>
         <ToastProvider>
           <Routes>
-            <Route path="/inventory/write-offs/new" element={<RequirePermission permission="inventory:register-exit"><BatchWriteOffPage /></RequirePermission>} />
+            <Route path="/inventory/write-offs/new" element={<RequirePermission permission="inventory:register-write-off"><BatchWriteOffPage /></RequirePermission>} />
             <Route path="/inventory/products" element={<><h2>Catálogo de productos</h2><Link to="/inventory/write-offs/new">Volver al registro de baja</Link></>} />
           </Routes>
         </ToastProvider>

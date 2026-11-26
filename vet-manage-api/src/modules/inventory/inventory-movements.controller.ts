@@ -12,7 +12,7 @@ export class InventoryMovementsController {
   constructor(private readonly movements: InventoryMovementsService) {}
 
   @Post('write-offs')
-  @RequirePermissions('inventory:register-exit')
+  @RequirePermissions('inventory:register-write-off')
   async registerWriteOff(@Body() input: RegisterBatchWriteOffDto, @Req() request: AuthenticatedRequest) {
     if (!request.user) throw ApiException.unauthorized();
     return success(await this.movements.registerWriteOff(input, request.user.id), 'Baja registrada correctamente', 201);

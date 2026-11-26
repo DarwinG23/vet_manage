@@ -7,11 +7,11 @@ import type { RegisterBatchWriteOffDto } from '../dtos/register-batch-write-off.
 import { validateBatchWriteOffInput } from './batch-write-off-input.service.js';
 
 const movementInclude = {
-  lote: { select: { id: true, code: true, product: { select: { id: true, code: true, name: true } } } },
-  usuario: { select: { id: true, person: { select: { firstName: true, lastName: true } } } },
+  batch: { select: { id: true, code: true, product: { select: { id: true, code: true, name: true } } } },
+  user: { select: { id: true, person: { select: { firstName: true, lastName: true } } } },
 } as const;
 
-type MovementWithReferences = Prisma.MovimientoInventarioGetPayload<{ include: typeof movementInclude }>;
+type MovementWithReferences = Prisma.InventoryMovementGetPayload<{ include: typeof movementInclude }>;
 
 @Injectable()
 export class InventoryMovementsService {
@@ -56,16 +56,16 @@ export class InventoryMovementsService {
         });
         if (!product) throw ApiException.conflict('Las existencias del producto no permiten registrar la baja');
 
-        const movement = await tx.movimientoInventario.create({
+        const movement = await tx.inventoryMovement.create({
           data: {
-            loteId: batch.id,
-            tipo: 'BAJA',
-            cantidad: quantity,
-            saldoAnterior: batch.availableQuantity + quantity,
-            saldoResultante: batch.availableQuantity,
-            motivo: reason,
-            observacion: observation,
-            usuarioId: userId,
+            batchId: batch.id,
+            type: 'BAJA',
+            quantity,
+            stockBefore: batch.availableQuantity + quantity,
+            stockAfter: batch.availableQuantity,
+            reason,
+            observation: observation,
+            userId,
           },
           include: movementInclude,
         });
@@ -83,16 +83,16 @@ export class InventoryMovementsService {
     if (!Number.isSafeInteger(skip) || skip > 2_147_483_647) {
       throw ApiException.badRequest('La página solicitada excede el límite permitido');
     }
-    const where: Prisma.MovimientoInventarioWhereInput = batchId ? { loteId: batchId } : {};
+    const where: Prisma.InventoryMovementWhereInput = batchId ? { batchId } : {};
     const { items, total } = await this.prisma.$transaction(async (tx) => ({
-      items: await tx.movimientoInventario.findMany({
+      items: await tx.inventoryMovement.findMany({
         where,
         include: movementInclude,
-        orderBy: [{ fechaHora: 'desc' }, { id: 'desc' }],
+        orderBy: [{ occurredAt: 'desc' }, { id: 'desc' }],
         skip,
         take: pageSize,
       }),
-      total: await tx.movimientoInventario.count({ where }),
+      total: await tx.inventoryMovement.count({ where }),
     }), { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
 
     return {
@@ -104,15 +104,15 @@ export class InventoryMovementsService {
   private toResponse(movement: MovementWithReferences) {
     return {
       id: movement.id,
-      type: movement.tipo,
-      quantity: movement.cantidad,
-      reason: movement.motivo,
-      observation: movement.observacion,
-      previousBalance: movement.saldoAnterior,
-      resultingBalance: movement.saldoResultante,
-      occurredAt: movement.fechaHora.toISOString(),
-      batch: movement.lote,
-      user: { id: movement.usuario.id, ...movement.usuario.person },
+      type: movement.type,
+      quantity: movement.quantity,
+      reason: movement.reason ?? 'Sin motivo',
+      observation: movement.observation,
+      previousBalance: movement.stockBefore,
+      resultingBalance: movement.stockAfter,
+      occurredAt: movement.occurredAt.toISOString(),
+      batch: movement.batch,
+      user: { id: movement.user.id, ...movement.user.person },
     };
   }
 }

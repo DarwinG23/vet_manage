@@ -5,6 +5,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import { PrismaClient } from '../../src/generated/prisma/client.js';
 import { InventoryMovementsService } from '../../src/modules/inventory/services/inventory-movements.service.js';
 import { InventoryService } from '../../src/modules/inventory/services/inventory.service.js';
+import { SalesService } from '../../src/modules/sales/services/sales.service.js';
 
 // Solo se ejecuta con una URL explícita de pruebas; nunca toma DATABASE_URL de la aplicación.
 const connectionString = process.env.INVENTORY_TEST_DATABASE_URL;
@@ -52,7 +53,8 @@ describe.skipIf(!connectionString)('HU-19a con PostgreSQL real', () => {
 
   afterEach(async () => {
     if (productId) {
-      await prisma.movimientoInventario.deleteMany({ where: { lote: { productId } } });
+      await prisma.inventoryMovement.deleteMany({ where: { batch: { productId } } });
+      await prisma.sale.deleteMany({ where: { details: { some: { productId } } } });
       await prisma.batch.deleteMany({ where: { productId } });
       await prisma.product.delete({ where: { id: productId } });
     }
@@ -71,7 +73,7 @@ describe.skipIf(!connectionString)('HU-19a con PostgreSQL real', () => {
   async function balances() {
     const batch = await prisma.batch.findUniqueOrThrow({ where: { id: batchId } });
     const product = await prisma.product.findUniqueOrThrow({ where: { id: productId } });
-    const movements = await prisma.movimientoInventario.findMany({ where: { loteId: batchId } });
+    const movements = await prisma.inventoryMovement.findMany({ where: { batchId: batchId } });
     return { batch: batch.availableQuantity, initialQuantity: batch.initialQuantity, stock: product.stock, movements };
   }
 
@@ -81,8 +83,8 @@ describe.skipIf(!connectionString)('HU-19a con PostgreSQL real', () => {
     expect(state).toMatchObject({ batch: 17, stock: 17, initialQuantity: 20 });
     expect(state.movements).toHaveLength(1);
     expect(state.movements[0]).toMatchObject({
-      loteId: batchId, usuarioId: userId, tipo: 'BAJA', cantidad: 3,
-      motivo: 'Daño', observacion: 'Envase roto', saldoAnterior: 20, saldoResultante: 17,
+      batchId: batchId, userId: userId, type: 'BAJA', quantity: 3,
+      reason: 'Daño', observation: 'Envase roto', stockBefore: 20, stockAfter: 17,
     });
     const history = await service.listMovements({ batchId });
     expect(history.items[0]).toMatchObject({
@@ -95,7 +97,21 @@ describe.skipIf(!connectionString)('HU-19a con PostgreSQL real', () => {
     await prisma.batch.update({ where: { id: batchId }, data: { availableQuantity: 8 } });
     await prisma.product.update({ where: { id: productId }, data: { stock: 8 } });
     await service.registerWriteOff({ batchId, quantity: 2, reason: 'Pérdida' }, userId);
-    expect(await balances()).toMatchObject({ batch: 6, stock: 6, movements: [{ motivo: 'Pérdida', observacion: null }] });
+    expect(await balances()).toMatchObject({ batch: 6, stock: 6, movements: [{ reason: 'Pérdida', observation: null }] });
+  });
+
+  it('una venta HU-08 y una baja HU-19a comparten el historial y conservan ambas existencias', async () => {
+    const sales = new SalesService(prisma as never);
+    await sales.create({ items: [{ productId, quantity: 2 }] }, userId);
+    await service.registerWriteOff({ batchId, quantity: 3, reason: 'Daño', observation: 'Envase roto' }, userId);
+
+    expect(await balances()).toMatchObject({ batch: 15, stock: 15, initialQuantity: 20 });
+    const history = await service.listMovements({ batchId });
+    expect(history.total).toBe(2);
+    expect(history.items).toEqual(expect.arrayContaining([
+      expect.objectContaining({ type: 'VENTA', quantity: 2, previousBalance: 20, resultingBalance: 18, observation: null, user: expect.objectContaining({ id: userId }) }),
+      expect.objectContaining({ type: 'BAJA', quantity: 3, previousBalance: 18, resultingBalance: 15, observation: 'Envase roto', user: expect.objectContaining({ id: userId }) }),
+    ]));
   });
 
   it('la consulta de existencias HU-20 refleja las unidades retiradas del producto y lote', async () => {
@@ -110,7 +126,7 @@ describe.skipIf(!connectionString)('HU-19a con PostgreSQL real', () => {
     await service.registerWriteOff({ batchId, quantity: 20, reason: 'Daño' }, userId);
     await expect(service.registerWriteOff({ batchId, quantity: 1, reason: 'Daño' }, userId))
       .rejects.toMatchObject({ statusCode: 409, message: 'El lote no tiene unidades disponibles' });
-    expect(await balances()).toMatchObject({ batch: 0, stock: 0, movements: [{ cantidad: 20 }] });
+    expect(await balances()).toMatchObject({ batch: 0, stock: 0, movements: [{ quantity: 20 }] });
   });
 
   it('rechaza una baja superior al saldo sin registrar movimientos', async () => {
@@ -154,7 +170,7 @@ describe.skipIf(!connectionString)('HU-19a con PostgreSQL real', () => {
     ]);
     expect(results.filter(({ status }) => status === 'fulfilled')).toHaveLength(1);
     expect(results.filter(({ status }) => status === 'rejected')).toHaveLength(1);
-    expect(await balances()).toMatchObject({ batch: 5, stock: 5, movements: [{ saldoAnterior: 20, saldoResultante: 5 }] });
+    expect(await balances()).toMatchObject({ batch: 5, stock: 5, movements: [{ stockBefore: 20, stockAfter: 5 }] });
   });
 
   it('dos bajas simultáneas válidas conservan una cadena coherente de saldos', async () => {
@@ -164,11 +180,11 @@ describe.skipIf(!connectionString)('HU-19a con PostgreSQL real', () => {
     ]);
     const state = await balances();
     expect(state).toMatchObject({ batch: 13, stock: 13 });
-    const ordered = state.movements.sort((a, b) => b.saldoAnterior - a.saldoAnterior);
+    const ordered = state.movements.sort((a, b) => b.stockBefore - a.stockBefore);
     expect(ordered).toHaveLength(2);
-    expect(ordered[0].saldoAnterior).toBe(20);
-    expect(ordered[0].saldoResultante).toBe(ordered[1].saldoAnterior);
-    expect(ordered[1].saldoResultante).toBe(13);
+    expect(ordered[0].stockBefore).toBe(20);
+    expect(ordered[0].stockAfter).toBe(ordered[1].stockBefore);
+    expect(ordered[1].stockAfter).toBe(13);
   });
 
   it('bajas concurrentes de distintos lotes protegen el stock compartido del producto', async () => {
@@ -185,7 +201,7 @@ describe.skipIf(!connectionString)('HU-19a con PostgreSQL real', () => {
     const batches = await prisma.batch.findMany({ where: { productId } });
     expect(product.stock).toBe(5);
     expect(batches.map(({ availableQuantity }) => availableQuantity).sort((a, b) => a - b)).toEqual([5, 20]);
-    expect(await prisma.movimientoInventario.count({ where: { lote: { productId } } })).toBe(1);
+    expect(await prisma.inventoryMovement.count({ where: { batch: { productId } } })).toBe(1);
   });
 
   it('consultar sin confirmar una baja no cambia saldos ni crea movimientos', async () => {

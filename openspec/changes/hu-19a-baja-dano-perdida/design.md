@@ -7,11 +7,14 @@ como el controlador actual. `InventoryMovementsService` queda en `services/`
 para no ampliar el servicio del catálogo con otra responsabilidad.
 Los DTOs están en `dtos/` y las pruebas HTTP/SQL en `test/inventory/`.
 
-`MovimientoInventario` y `TipoMovimiento` conservan los nombres del diagrama.
-El modelo relaciona `Batch` y `User`; no duplica modelos ni modifica el acceso
-de otras historias. La tabla `inventory_movements` usa columnas en inglés,
-según el esquema existente. El campo `observacion` complementa el diagrama
-con el dato exigido por HU-19. No hay rutas para editar o eliminar movimientos.
+Tras integrar HU-08 desde `development`, se reutilizan `InventoryMovement` y
+`InventoryMovementType`, ya usados por ventas, para representar el movimiento
+del diagrama. Se conserva una única tabla `inventory_movements`, con las
+columnas `stock_before` y `stock_after` del modelo compartido. Se añade
+`observation` para HU-19a y la relación con `User` para la trazabilidad.
+La respuesta HTTP mantiene `previousBalance`, `resultingBalance` y los demás
+campos de HU-19a, sin obligar a cambiar su interfaz. No hay rutas para editar
+o eliminar movimientos.
 
 La operación valida los campos y, en una transacción `ReadCommitted`:
 
@@ -35,9 +38,11 @@ servicios, puertos ni dependencias de paquetes.
 
 ### Registrar una baja
 
-`POST /api/v1/inventory/write-offs`, permiso `inventory:register-exit`.
+`POST /api/v1/inventory/write-offs`, permiso `inventory:register-write-off`.
 Se asigna al Bodeguero; el Superadministrador de pruebas ya recibe el catálogo
-completo. Los demás roles operativos no registran bajas por defecto.
+completo. Los demás roles operativos no registran bajas por defecto. Este
+permiso se separó de `inventory:register-exit`, utilizado por el Cajero en
+ventas, para conservar la restricción de actor de HU-19a.
 
 ```json
 {
@@ -87,7 +92,7 @@ Se mantiene React, Vite y el módulo `src/modules/inventory` existente:
   módulo, reutilizando el cliente HTTP y su manejo de sesión.
 
 Las rutas son `/inventory/write-offs/new` y `/inventory/movements`, protegidas
-por `inventory:register-exit` e `inventory:read-reports`. El menú filtra las
+por `inventory:register-write-off` e `inventory:read-reports`. El menú filtra las
 entradas con esos mismos permisos. No se agregan bibliotecas ni componentes
 globales nuevos: se reutilizan `RequirePermission`, `useToast`, la confirmación
 existente, los enlaces y los estilos del módulo.
@@ -167,3 +172,30 @@ tenía `patients`, y las migraciones pendientes, incluida HU-19a, se aplicaron.
 La base aislada se preparó con el esquema actual de Prisma y la secuencia
 `patient_code_seq` que usa el módulo de pacientes. No se corrigieron archivos
 de otros módulos ni se usó `db push` sobre la base de trabajo.
+
+### Integración con development del 26/11/2026
+
+Se integró `fabf2bc` conservando las rutas, servicios y tipos de ventas y
+órdenes de compra. Las dos historias creaban `inventory_movements`; se adaptó
+HU-19a al modelo compartido de HU-08. La migración de HU-19a omite la creación
+si ventas ya creó la tabla; la nueva migración `reconcile_inventory_movements`
+renombra las columnas legadas, convierte el enum y conserva los registros.
+Las restricciones de saldo de HU-19a se aplican únicamente a `BAJA`.
+
+La migración de ventas permite encontrar la tabla e índices ya creados por
+HU-19a, y las dos migraciones que añaden `minimum_stock` evitan duplicar esa
+columna. Son ajustes de compatibilidad de la unión; no cambian la lógica de
+ventas. Se verificaron ambos recorridos en bases aisladas: HU-19a aplicada
+antes de traer ventas y ventas aplicada antes de HU-19a. Ambos completaron
+las migraciones y las 14 pruebas PostgreSQL, incluida una venta de 2 unidades
+seguida de una baja de 3 sobre el mismo lote (20 → 18 → 15).
+
+Antes de actualizar la base local se guardó un respaldo. Después se comprobó
+que su baja de 50 unidades mantiene el identificador, motivo, observación y
+saldos 60 → 10. La regresión completa aprobó 916 pruebas del backend y 541 del
+frontend; las pruebas HTTP focalizadas aprobaron 50. Las compilaciones de
+ambos proyectos terminaron correctamente.
+La API real confirmó el acceso del Gerente al historial, una validación 400
+para cantidad cero del Bodeguero y un rechazo 403 al Cajero al intentar una
+baja. La base vacía `vet_manage_hu19a_test` quedó sincronizada con el esquema
+compartido y sus restricciones de baja; aprobó las 14 pruebas PostgreSQL.

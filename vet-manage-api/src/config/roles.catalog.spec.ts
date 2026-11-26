@@ -33,3 +33,19 @@ describe('RBAC de proveedores', () => {
     }
   });
 });
+
+describe('RBAC de órdenes de compra (HU-27)', () => {
+  const PURCHASE_ORDER_PERMISSIONS = ['purchase-orders:create', 'purchase-orders:read'] as const;
+
+  it('incluye el catálogo de permisos de órdenes de compra', () => {
+    expect(PERMISSIONS.filter(({ key }) => key.startsWith('purchase-orders:')).map(({ key }) => key))
+      .toEqual(PURCHASE_ORDER_PERMISSIONS);
+  });
+
+  it('asigna los permisos al Gerente y al Superadministrador de pruebas, y a ningún otro rol', () => {
+    for (const role of ROLES) {
+      const granted = role.permissions.filter((key) => key.startsWith('purchase-orders:'));
+      expect(granted, role.name).toEqual(['manager', 'superadmin'].includes(role.name) ? PURCHASE_ORDER_PERMISSIONS : []);
+    }
+  });
+});

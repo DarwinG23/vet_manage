@@ -5,10 +5,12 @@ import { InventoryController } from './inventory.controller.js';
 import { InventoryService } from './services/inventory.service.js';
 import { InventoryMovementsController } from './inventory-movements.controller.js';
 import { InventoryMovementsService } from './services/inventory-movements.service.js';
+import { SalesController } from '../sales/sales.controller.js';
+import { SalesService } from '../sales/services/sales.service.js';
 
 @Module({
   imports: [PrismaModule, IdentityModule],
-  controllers: [InventoryController, InventoryMovementsController],
-  providers: [InventoryService, InventoryMovementsService],
+  controllers: [InventoryController, SalesController, InventoryMovementsController],
+  providers: [InventoryService, SalesService, InventoryMovementsService],
 })
 export class InventoryModule {}

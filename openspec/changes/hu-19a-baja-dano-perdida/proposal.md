@@ -24,8 +24,11 @@ parte asignada a Elias en Sprint 2 (5 puntos, revisión de Esteban).
 Se conserva la organización real de `inventory`: controladores y módulo en
 su raíz, DTOs en `dtos/`, servicios y sus pruebas en `services/`. Los servicios
 usan Prisma como los flujos existentes del equipo. No se reorganizan otras HU.
-El modelo nuevo se llama `MovimientoInventario` y usa `TipoMovimiento`, como
-el diagrama del módulo. Se agrega `observacion`, exigida por HU-19.
+El movimiento del diagrama se representa con el modelo compartido
+`InventoryMovement` y su enum `InventoryMovementType`, incorporados por HU-08
+en `development`. Se agrega `observation`, exigida por HU-19, sin duplicar la
+tabla de movimientos. El permiso propio de bajas conserva el acceso del
+Bodeguero sin ampliar el permiso de ventas del Cajero.
 
 ## Límites
 

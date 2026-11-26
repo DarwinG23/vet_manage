@@ -1,7 +1,8 @@
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { createBrowserRouter, createRoutesFromElements, Navigate, Route, RouterProvider } from 'react-router-dom';
 import { AppShell } from '../common/layouts/app-shell';
 import { RequireAuth } from '../modules/auth/components/require-auth';
 import { RequirePermission } from '../modules/auth/components/require-permission';
+import { ChangePasswordPage } from '../modules/auth/pages/change-password-page';
 import { LoginPage } from '../modules/auth/pages/login-page';
 import { CATALOG_PERMISSIONS } from '../modules/catalogs/catalog-tabs';
 import { CatalogsPage } from '../modules/catalogs/pages/catalogs-page';
@@ -17,24 +18,30 @@ import { CatalogPage } from '../modules/inventory/pages/catalog-page';
 import { ProductDetailPage } from '../modules/inventory/pages/product-detail-page';
 import { ProductFormPage } from '../modules/inventory/pages/product-form-page';
 import { ProductsPage } from '../modules/inventory/pages/products-page';
+import { RolePermissionsPage } from '../modules/roles/pages/role-permissions-page';
 import { schedulingRoutes } from '../modules/scheduling/routes';
+import { PurchaseOrderDetailPage } from '../modules/purchase-orders/pages/purchase-order-detail-page';
+import { PurchaseOrderFormPage } from '../modules/purchase-orders/pages/purchase-order-form-page';
+import { PurchaseOrdersPage } from '../modules/purchase-orders/pages/purchase-orders-page';
 import { SupplierFormPage } from '../modules/suppliers/pages/supplier-form-page';
 import { SuppliersPage } from '../modules/suppliers/pages/suppliers-page';
 import { UsersPage } from '../modules/users/pages/users-page';
 import { UserRegisterPage } from '../modules/users/pages/user-register-page';
 import { UserRoleAssignmentPage } from '../modules/users/pages/user-role-assignment-page';
+import { SalesPage } from '../modules/inventory/pages/sales-page';
 
 function ComingSoonPage() {
   return <section className="empty-page"><span className="eyebrow">Módulo en preparación</span><h2>Esta sección será implementada por el equipo</h2><p>La arquitectura y el hot reload ya están listos para comenzar.</p></section>;
 }
 
-export function AppRouter() {
-  return (
-    <Routes>
-      <Route path="login" element={<LoginPage />} />
-      <Route element={<RequireAuth />}>
+const router = createBrowserRouter(
+  createRoutesFromElements(
+    <>
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/" element={<RequireAuth />}>
         <Route element={<AppShell />}>
           <Route index element={<DashboardPage />} />
+          <Route path="change-password" element={<ChangePasswordPage />} />
           <Route path="pets" element={<RequirePermission permission="pets:read"><PatientsPage /></RequirePermission>} />
           <Route path="catalogs" element={<RequirePermission permission={CATALOG_PERMISSIONS}><CatalogsPage /></RequirePermission>} />
           <Route path="clients" element={<RequirePermission permission="clients:read"><ClientsPage /></RequirePermission>} />
@@ -49,17 +56,27 @@ export function AppRouter() {
           <Route path="inventory/products/:id" element={<RequirePermission permission="inventory:read"><ProductDetailPage /></RequirePermission>} />
           <Route path="inventory/batches/new" element={<RequirePermission permission="inventory:register-entry"><BatchEntryPage /></RequirePermission>} />
           <Route path="inventory/batches/:id" element={<RequirePermission permission="inventory:read"><BatchDetailPage /></RequirePermission>} />
-          <Route path="inventory/write-offs/new" element={<RequirePermission permission="inventory:register-exit"><BatchWriteOffPage /></RequirePermission>} />
+          <Route path="inventory/write-offs/new" element={<RequirePermission permission="inventory:register-write-off"><BatchWriteOffPage /></RequirePermission>} />
           <Route path="inventory/movements" element={<RequirePermission permission="inventory:read-reports"><InventoryMovementsPage /></RequirePermission>} />
+          <Route path="inventory/sales/new" element={<RequirePermission permission="inventory:register-exit"><SalesPage /></RequirePermission>} />
+          <Route path="inventory/sales" element={<RequirePermission permission="inventory:read"><SalesPage historyOnly /></RequirePermission>} />
           <Route path="inventory/suppliers" element={<RequirePermission permission="suppliers:read"><SuppliersPage /></RequirePermission>} />
           <Route path="inventory/suppliers/new" element={<RequirePermission permission="suppliers:create"><SupplierFormPage /></RequirePermission>} />
+          <Route path="inventory/purchase-orders" element={<RequirePermission permission="purchase-orders:read"><PurchaseOrdersPage /></RequirePermission>} />
+          <Route path="inventory/purchase-orders/new" element={<RequirePermission permission="purchase-orders:create"><PurchaseOrderFormPage /></RequirePermission>} />
+          <Route path="inventory/purchase-orders/:id" element={<RequirePermission permission="purchase-orders:read"><PurchaseOrderDetailPage /></RequirePermission>} />
           <Route path="inventory/suppliers/:id/edit" element={<RequirePermission permission="suppliers:read"><RequirePermission permission="suppliers:update"><SupplierFormPage /></RequirePermission></RequirePermission>} />
           <Route path="users" element={<RequirePermission permission="users:read"><UsersPage /></RequirePermission>} />
           <Route path="users/new" element={<RequirePermission permission="users:create"><UserRegisterPage /></RequirePermission>} />
           <Route path="users/:id/roles" element={<RequirePermission permission="users:assign-roles"><UserRoleAssignmentPage /></RequirePermission>} />
+          <Route path="roles/permissions" element={<RequirePermission permission="roles:manage-permissions"><RolePermissionsPage /></RequirePermission>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Route>
-    </Routes>
-  );
+    </>,
+  ),
+);
+
+export function AppRouter() {
+  return <RouterProvider router={router} />;
 }
