@@ -177,7 +177,7 @@ export function ProductsPage() {
                   <th>Marca</th>
                   <th>Precio unitario</th>
                   <th>Existencias</th>
-                  {canManageProducts && <th>Acciones</th>}
+                  <th>Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -192,16 +192,24 @@ export function ProductsPage() {
                     <td>{product.brand.name}</td>
                     <td className="price-cell">${Number(product.unitPrice).toFixed(2)}</td>
                     <td className="price-cell">{product.stock}</td>
-                    {canManageProducts && (
-                      <td>
+                    <td>
+                      <div className="product-actions">
                         <Link
-                          className="button button--ghost button--small"
-                          to={`/inventory/products/${product.id}/edit`}
+                          className="button button--secondary button--small"
+                          to={`/inventory/products/${product.id}`}
                         >
-                          Editar
+                          Consultar
                         </Link>
-                      </td>
-                    )}
+                        {canManageProducts && (
+                          <Link
+                            className="button button--ghost button--small"
+                            to={`/inventory/products/${product.id}/edit`}
+                          >
+                            Editar
+                          </Link>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>

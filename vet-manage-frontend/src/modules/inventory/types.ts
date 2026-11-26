@@ -28,6 +28,19 @@ export type Product = {
   createdAt: string;
 };
 
+export type ProductBatch = {
+  id: string;
+  code: string;
+  expirationDate: string;
+  availableQuantity: number;
+  expirationStatus: 'EXPIRED' | 'NOT_EXPIRED';
+};
+
+// El endpoint de detalle incluye la relación de lotes; el listado no la carga.
+export type ProductDetail = Product & {
+  batches: ProductBatch[];
+};
+
 export type ProductDraft = {
   code: string;
   name: string;

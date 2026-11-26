@@ -4,7 +4,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ToastContext } from '../../../common/components/toast-context';
 import { inventoryApi } from '../services/inventory-api';
-import type { Product } from '../types';
+import type { ProductDetail } from '../types';
 import { ProductFormPage } from './product-form-page';
 
 vi.mock('../services/inventory-api', () => ({
@@ -20,7 +20,7 @@ vi.mock('../services/inventory-api', () => ({
 
 const showToast = vi.fn();
 
-const product: Product = {
+const product: ProductDetail = {
   id: 'product-1',
   code: 'PR-001',
   name: 'Alimento para perro',
@@ -31,6 +31,7 @@ const product: Product = {
   category: { id: 'category-1', name: 'Alimentos' },
   brand: { id: 'brand-1', name: 'Dog Chow' },
   createdAt: '2026-11-19T00:00:00.000Z',
+  batches: [],
 };
 
 function renderPage(path = '/inventory/products/product-1/edit') {
@@ -46,7 +47,7 @@ function renderPage(path = '/inventory/products/product-1/edit') {
   );
 }
 
-async function loadProduct(overrides: Partial<Product> = {}) {
+async function loadProduct(overrides: Partial<ProductDetail> = {}) {
   vi.mocked(inventoryApi.listCategories).mockResolvedValue([]);
   vi.mocked(inventoryApi.listBrands).mockResolvedValue([]);
   vi.mocked(inventoryApi.getProduct).mockResolvedValue({ ...product, ...overrides });

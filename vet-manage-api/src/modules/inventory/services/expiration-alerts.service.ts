@@ -21,6 +21,14 @@ export type ExpirationAlert = {
   label: 'Próximo a caducar' | 'Caducado';
 };
 
+function isExpiredDay(expirationDay: number | null, today: number | null): boolean {
+  return today !== null && expirationDay !== null && expirationDay < today;
+}
+
+export function isExpirationDateExpired(expirationDate: Date | string, referenceDate = new Date()): boolean {
+  return isExpiredDay(toUtcDay(expirationDate), toUtcDay(referenceDate));
+}
+
 /**
  * Evaluates the current lot data so a changed expiry date or quantity is
  * reflected immediately the next time the dashboard requests its alerts.
@@ -40,7 +48,7 @@ export function findExpirationAlerts(lots: readonly ExpirationLot[], referenceDa
       const expirationDay = toUtcDay(lot.expirationDate);
       if (expirationDay === null || expirationDay > lastUpcomingDay) return [];
 
-      const status: ExpirationAlertStatus = expirationDay < today ? 'EXPIRED' : 'UPCOMING';
+      const status: ExpirationAlertStatus = isExpiredDay(expirationDay, today) ? 'EXPIRED' : 'UPCOMING';
       return [{
         lotId: lot.lotId,
         productName: lot.productName,
