@@ -18,6 +18,9 @@ import { ProductFormPage } from '../modules/inventory/pages/product-form-page';
 import { ProductsPage } from '../modules/inventory/pages/products-page';
 import { RolePermissionsPage } from '../modules/roles/pages/role-permissions-page';
 import { schedulingRoutes } from '../modules/scheduling/routes';
+import { PurchaseOrderDetailPage } from '../modules/purchase-orders/pages/purchase-order-detail-page';
+import { PurchaseOrderFormPage } from '../modules/purchase-orders/pages/purchase-order-form-page';
+import { PurchaseOrdersPage } from '../modules/purchase-orders/pages/purchase-orders-page';
 import { SupplierFormPage } from '../modules/suppliers/pages/supplier-form-page';
 import { SuppliersPage } from '../modules/suppliers/pages/suppliers-page';
 import { UsersPage } from '../modules/users/pages/users-page';
@@ -52,6 +55,9 @@ const router = createBrowserRouter(
           <Route path="inventory/batches/:id" element={<RequirePermission permission="inventory:read"><BatchDetailPage /></RequirePermission>} />
           <Route path="inventory/suppliers" element={<RequirePermission permission="suppliers:read"><SuppliersPage /></RequirePermission>} />
           <Route path="inventory/suppliers/new" element={<RequirePermission permission="suppliers:create"><SupplierFormPage /></RequirePermission>} />
+          <Route path="inventory/purchase-orders" element={<RequirePermission permission="purchase-orders:read"><PurchaseOrdersPage /></RequirePermission>} />
+          <Route path="inventory/purchase-orders/new" element={<RequirePermission permission="purchase-orders:create"><PurchaseOrderFormPage /></RequirePermission>} />
+          <Route path="inventory/purchase-orders/:id" element={<RequirePermission permission="purchase-orders:read"><PurchaseOrderDetailPage /></RequirePermission>} />
           <Route path="inventory/suppliers/:id/edit" element={<RequirePermission permission="suppliers:read"><RequirePermission permission="suppliers:update"><SupplierFormPage /></RequirePermission></RequirePermission>} />
           <Route path="users" element={<RequirePermission permission="users:read"><UsersPage /></RequirePermission>} />
           <Route path="users/new" element={<RequirePermission permission="users:create"><UserRegisterPage /></RequirePermission>} />
