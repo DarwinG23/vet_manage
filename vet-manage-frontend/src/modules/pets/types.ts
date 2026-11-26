@@ -23,9 +23,12 @@ export interface Breed {
   description?: string | null;
   isActive: boolean;
   speciesId: string;
+  species?: SpeciesOption;
   createdAt: string;
   updatedAt: string;
 }
+
+export type BreedStatusChange = Pick<Breed, 'id' | 'isActive' | 'updatedAt'>;
 
 export interface RegisterBreedDraft {
   name: string;

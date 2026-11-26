@@ -21,9 +21,24 @@ export type Product = {
   description?: string | null;
   unitPrice: string;
   stock: number;
+  // HU-03: umbral de inventario bajo; null cuando aún no se configuró.
+  minimumStock: number | null;
   category: CatalogItem;
   brand: CatalogItem;
   createdAt: string;
+};
+
+export type ProductBatch = {
+  id: string;
+  code: string;
+  expirationDate: string;
+  availableQuantity: number;
+  expirationStatus: 'EXPIRED' | 'NOT_EXPIRED';
+};
+
+// El endpoint de detalle incluye la relación de lotes; el listado no la carga.
+export type ProductDetail = Product & {
+  batches: ProductBatch[];
 };
 
 export type ProductDraft = {

@@ -1,5 +1,5 @@
 import { getJson, patchJson, postJson } from '../../../infrastructure/api/http-client';
-import type { BatchDetail, BatchEntryDraft, BatchEntryResult, CatalogItem, ExpirationAlert, InventoryCategory, Product, ProductDraft, ProductSearchFilters, Sale, SaleDraft } from '../types';
+import type { BatchDetail, BatchEntryDraft, BatchEntryResult, CatalogItem, ExpirationAlert, InventoryCategory, Product, ProductDetail, ProductDraft, ProductSearchFilters, Sale, SaleDraft } from '../types';
 
 export const inventoryApi = {
   listProducts(search = '', filters: ProductSearchFilters = {}) {
@@ -22,7 +22,7 @@ export const inventoryApi = {
     );
   },
   getProduct(id: string) {
-    return getJson<Product>(`/inventory/products/${id}`);
+    return getJson<ProductDetail>(`/inventory/products/${id}`);
   },
   getBatch(id: string) {
     return getJson<BatchDetail>(`/inventory/batches/${id}`);
@@ -41,6 +41,13 @@ export const inventoryApi = {
   },
   updateProduct(id: string, draft: ProductDraft) {
     return patchJson<Product, ProductDraft>(`/inventory/products/${id}`, draft);
+  },
+  // HU-03: configura o actualiza solo el stock mínimo del producto.
+  updateProductMinimumStock(id: string, minimumStock: number) {
+    return patchJson<{ id: string; minimumStock: number }, { minimumStock: number }>(
+      `/inventory/products/${id}/minimum-stock`,
+      { minimumStock },
+    );
   },
   createCategory(name: string) {
     return postJson<InventoryCategory, { name: string }>('/inventory/categories', { name });

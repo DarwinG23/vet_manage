@@ -6,7 +6,7 @@ import { BatchEntryForm } from './batch-entry-form';
 import type { BatchEntryDraft, Product } from '../types';
 
 const products: Product[] = [{
-  id: 'p-1', code: 'PR-001', name: 'Alimento para perro', description: null, unitPrice: '25.50', stock: 10,
+  id: 'p-1', code: 'PR-001', name: 'Alimento para perro', description: null, unitPrice: '25.50', stock: 10, minimumStock: null,
   category: { id: 'c-1', name: 'Alimentos' }, brand: { id: 'b-1', name: 'Dog Chow' }, createdAt: '2026-11-19',
 }];
 

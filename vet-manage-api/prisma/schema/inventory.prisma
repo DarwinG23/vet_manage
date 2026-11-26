@@ -36,7 +36,7 @@ model Product {
   description String?  @db.Text
   unitPrice   Decimal  @map("unit_price") @db.Decimal(12, 2)
   stock       Int      @default(0)
-  minimumStock Int     @default(0) @map("minimum_stock")
+  minimumStock Int?    @map("minimum_stock")
   categoryId  String   @map("category_id") @db.Uuid
   brandId     String   @map("brand_id") @db.Uuid
   isActive    Boolean  @default(true) @map("is_active")
@@ -47,6 +47,7 @@ model Product {
   brand    Marca    @relation(fields: [brandId], references: [id], onDelete: Restrict)
   batches  Batch[]
   saleDetails SaleDetail[]
+  purchaseOrderItems PurchaseOrderItem[]
 
   @@index([name])
   @@index([categoryId])

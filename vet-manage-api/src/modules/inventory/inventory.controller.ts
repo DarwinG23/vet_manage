@@ -7,6 +7,7 @@ import { ListProductsQueryDto } from './dtos/list-products-query.dto.js';
 import { RegisterBatchEntryDto } from './dtos/register-batch-entry.dto.js';
 import { UpdateCategoryVatDto } from './dtos/update-category-vat.dto.js';
 import { UpdateBatchExpirationDto } from './dtos/update-batch-expiration.dto.js';
+import { UpdateMinimumStockDto } from './dtos/update-minimum-stock.dto.js';
 import { InventoryService } from './services/inventory.service.js';
 
 @Controller('inventory')
@@ -99,6 +100,17 @@ export class InventoryController {
   @RequirePermissions('inventory:manage-products')
   async updateProduct(@Param('id') id: string, @Body() input: CreateProductDto) {
     return success(await this.inventoryService.updateProduct(id, input), 'Producto actualizado correctamente');
+  }
+
+  // HU-03: Gerente y Bodeguero configuran o actualizan el stock mínimo.
+  @Patch('products/:id/minimum-stock')
+  @RequirePermissions('inventory:manage-products')
+  async updateProductMinimumStock(@Param('id') id: string, @Body() input: UpdateMinimumStockDto) {
+    const { isFirstConfiguration, ...product } = await this.inventoryService.updateProductMinimumStock(id, input.minimumStock);
+    return success(
+      product,
+      isFirstConfiguration ? 'Stock mínimo registrado correctamente' : 'Stock mínimo actualizado correctamente',
+    );
   }
 
   // HU-02: solo quien tiene inventory:register-entry (Bodeguero) registra entradas de lote.

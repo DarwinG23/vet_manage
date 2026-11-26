@@ -66,6 +66,15 @@ describe('ClientRegisterPage', () => {
     expect(phone.closest('label')).not.toHaveTextContent('Opcional');
   });
 
+  it('solo deja escribir números en el teléfono', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.type(screen.getByLabelText(/Teléfono/), '09a9b1-23 4567xyz');
+
+    expect(screen.getByLabelText(/Teléfono/)).toHaveValue('0991234567');
+  });
+
   it('resalta el teléfono inválido y muestra el mensaje contractual', async () => {
     const user = userEvent.setup();
     renderPage();

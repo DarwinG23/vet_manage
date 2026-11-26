@@ -6,6 +6,49 @@ model Supplier {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
+  purchaseOrders PurchaseOrder[]
+
   @@index([isActive])
   @@map("suppliers")
+}
+
+// HU-27: estados de una orden de compra. Las recepciones agregarán los siguientes estados.
+enum PurchaseOrderStatus {
+  PENDING
+}
+
+// HU-27: orden de compra a un proveedor. Crearla no modifica existencias.
+model PurchaseOrder {
+  id         String              @id @default(uuid()) @db.Uuid
+  number     Int                 @unique @default(autoincrement())
+  orderDate  DateTime            @default(now()) @map("order_date")
+  supplierId String              @map("supplier_id") @db.Uuid
+  status     PurchaseOrderStatus @default(PENDING)
+  total      Decimal             @db.Decimal(14, 2)
+  createdAt  DateTime            @default(now()) @map("created_at")
+  updatedAt  DateTime            @updatedAt @map("updated_at")
+
+  supplier Supplier            @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  items    PurchaseOrderItem[]
+
+  @@index([supplierId, status])
+  @@index([orderDate])
+  @@map("purchase_orders")
+}
+
+// HU-27: producto solicitado en una orden de compra.
+model PurchaseOrderItem {
+  id              String  @id @default(uuid()) @db.Uuid
+  purchaseOrderId String  @map("purchase_order_id") @db.Uuid
+  productId       String  @map("product_id") @db.Uuid
+  quantity        Int
+  unitPrice       Decimal @map("unit_price") @db.Decimal(12, 2)
+  subtotal        Decimal @db.Decimal(14, 2)
+
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  product       Product       @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@unique([purchaseOrderId, productId])
+  @@index([productId])
+  @@map("purchase_order_items")
 }
