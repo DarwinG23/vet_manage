@@ -1,5 +1,5 @@
 import { getJson, patchJson, postJson } from '../../../infrastructure/api/http-client';
-import type { BatchDetail, BatchEntryDraft, BatchEntryResult, CatalogItem, ExpirationAlert, InventoryCategory, Product, ProductDetail, ProductDraft, ProductSearchFilters } from '../types';
+import type { BatchDetail, BatchEntryDraft, BatchEntryResult, CatalogItem, ExpirationAlert, InventoryCategory, Product, ProductDetail, ProductDraft, ProductSearchFilters, Sale, SaleDraft } from '../types';
 
 export const inventoryApi = {
   listProducts(search = '', filters: ProductSearchFilters = {}) {
@@ -66,5 +66,11 @@ export const inventoryApi = {
   },
   registerBatchEntry(draft: BatchEntryDraft) {
     return postJson<BatchEntryResult, BatchEntryDraft>('/inventory/batches', draft);
+  },
+  createSale(draft: SaleDraft) {
+    return postJson<Sale, SaleDraft>('/inventory/sales', draft);
+  },
+  listSales() {
+    return getJson<Sale[]>('/inventory/sales');
   },
 };

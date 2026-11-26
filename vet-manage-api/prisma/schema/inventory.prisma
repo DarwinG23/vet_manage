@@ -1,6 +1,8 @@
 model Category {
   id          String   @id @default(uuid()) @db.Uuid
   name        String   @unique @db.VarChar(100)
+  allowReturns Boolean  @default(false) @map("allow_returns")
+  vat         Int      @default(0)
   description String?  @db.Text
   vatRate     Decimal? @map("vat_rate") @db.Decimal(5, 2)
   isActive    Boolean  @default(true) @map("is_active")
@@ -44,6 +46,7 @@ model Product {
   category Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   brand    Marca    @relation(fields: [brandId], references: [id], onDelete: Restrict)
   batches  Batch[]
+  saleDetails SaleDetail[]
   purchaseOrderItems PurchaseOrderItem[]
 
   @@index([name])
@@ -56,6 +59,7 @@ model Product {
 // Lote de un producto registrado en una entrada de inventario (HU-02).
 model Batch {
   id              String   @id @default(uuid()) @db.Uuid
+  promotionId     String?  @map("promotion_id") @db.Uuid
   productId       String   @map("product_id") @db.Uuid
   code            String   @db.VarChar(50)
   expirationDate  DateTime @map("expiration_date") @db.Date
@@ -64,9 +68,143 @@ model Batch {
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
+  promotion Promotion? @relation(fields: [promotionId], references: [id], onDelete: SetNull)
   product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  saleDetails SaleDetail[]
+  inventoryMovements InventoryMovement[]
+  returns ProductReturn[]
 
   @@index([productId])
   @@index([expirationDate])
+  @@index([promotionId])
   @@map("batches")
+}
+
+enum SaleStatus {
+  PAID
+  PENDING
+}
+
+enum InventoryMovementType {
+  ENTRADA
+  VENTA
+  USO_CLINICO
+  AJUSTE
+  BAJA
+}
+
+model Sale {
+  id               String     @id @default(uuid()) @db.Uuid
+  occurredAt       DateTime   @default(now()) @map("occurred_at")
+  status           SaleStatus @default(PAID)
+  subtotal         Decimal    @db.Decimal(12, 2)
+  discount         Decimal    @default(0) @db.Decimal(12, 2)
+  total            Decimal    @db.Decimal(12, 2)
+  paymentDetailId  String?    @unique @map("payment_detail_id") @db.Uuid
+  paymentId        String?    @map("payment_id") @db.Uuid
+
+  details          SaleDetail[]
+  paymentDetail    PaymentDetail? @relation(fields: [paymentDetailId], references: [id], onDelete: SetNull)
+
+  @@index([occurredAt])
+  @@index([status])
+  @@map("sales")
+}
+
+model SaleDetail {
+  id                       String   @id @default(uuid()) @db.Uuid
+  quantity                 Int
+  appliedUnitPrice         Decimal  @map("applied_unit_price") @db.Decimal(12, 2)
+  discountPercentage       Decimal  @default(0) @map("discount_percentage") @db.Decimal(5, 2)
+  subtotal                 Decimal  @db.Decimal(12, 2)
+  saleId                   String   @map("sale_id") @db.Uuid
+  productId                String   @map("product_id") @db.Uuid
+  batchId                  String   @map("batch_id") @db.Uuid
+  isActive                 Boolean  @default(true) @map("is_active")
+
+  sale                     Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product                  Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+  batch                    Batch    @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  returns                  ProductReturn[]
+
+  @@index([saleId])
+  @@index([productId])
+  @@index([batchId])
+  @@map("sale_details")
+}
+
+model Promotion {
+  id                String   @id @default(uuid()) @db.Uuid
+  percentage        Decimal  @db.Decimal(5, 2)
+  startDate         DateTime @map("start_date") @db.Date
+  endDate           DateTime @map("end_date") @db.Date
+  promotionalPrice  Decimal  @map("promotional_price") @db.Decimal(12, 2)
+
+  batches           Batch[]
+
+  @@map("promotions")
+}
+
+model InventoryMovement {
+  id             String                @id @default(uuid()) @db.Uuid
+  batchId        String                @map("batch_id") @db.Uuid
+  type           InventoryMovementType
+  quantity       Int
+  stockBefore   Int                   @map("stock_before")
+  stockAfter    Int                   @map("stock_after")
+  reason        String?               @db.Text
+  occurredAt    DateTime              @default(now()) @map("occurred_at")
+  userId        String                @map("user_id") @db.Uuid
+
+  batch          Batch                 @relation(fields: [batchId], references: [id], onDelete: Restrict)
+
+  @@index([batchId])
+  @@index([userId])
+  @@index([occurredAt])
+  @@map("inventory_movements")
+}
+
+model PaymentDetail {
+  id             String   @id @default(uuid()) @db.Uuid
+  email          String?  @db.VarChar(255)
+  registeredAt   DateTime @map("registered_at")
+  address        String?  @db.VarChar(255)
+  firstName      String   @map("first_name") @db.VarChar(100)
+  lastName       String   @map("last_name") @db.VarChar(100)
+  identification String   @db.VarChar(20)
+  phone          String?  @db.VarChar(30)
+
+  sale           Sale?
+
+  @@map("payment_details")
+}
+
+enum ReturnStatus {
+  DEVUELTO
+  EN_PROCESO
+  RECHAZADO
+  ACTIVO
+}
+
+enum ReturnType {
+  CLIENTE
+  VETERINARIA
+}
+
+model ProductReturn {
+  id             String       @id @default(uuid()) @db.Uuid
+  batchId        String       @map("batch_id") @db.Uuid
+  quantity       Int
+  reason         String       @db.Text
+  status         ReturnStatus @map("return_status")
+  type           ReturnType   @map("return_type")
+  occurredAt     DateTime     @default(now()) @map("occurred_at")
+  saleDetailId   String       @map("sale_detail_id") @db.Uuid
+
+  batch          Batch        @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  saleDetail     SaleDetail   @relation(fields: [saleDetailId], references: [id], onDelete: Restrict)
+
+  @@index([batchId])
+  @@index([saleDetailId])
+  @@map("product_returns")
 }

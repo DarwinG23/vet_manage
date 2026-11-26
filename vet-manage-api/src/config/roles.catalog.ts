@@ -143,7 +143,7 @@ export const ROLES: readonly RoleDefinition[] = [
     displayName: 'Cajero',
     description: 'Gestiona cobros. Sus permisos se definen en el módulo de ventas.',
     category: 'STAFF',
-    permissions: ['inventory:read'],
+    permissions: ['inventory:read', 'inventory:register-exit'],
   },
   {
     name: 'warehouse_keeper',

@@ -26,6 +26,7 @@ import { SuppliersPage } from '../modules/suppliers/pages/suppliers-page';
 import { UsersPage } from '../modules/users/pages/users-page';
 import { UserRegisterPage } from '../modules/users/pages/user-register-page';
 import { UserRoleAssignmentPage } from '../modules/users/pages/user-role-assignment-page';
+import { SalesPage } from '../modules/inventory/pages/sales-page';
 
 function ComingSoonPage() {
   return <section className="empty-page"><span className="eyebrow">Módulo en preparación</span><h2>Esta sección será implementada por el equipo</h2><p>La arquitectura y el hot reload ya están listos para comenzar.</p></section>;
@@ -53,6 +54,8 @@ const router = createBrowserRouter(
           <Route path="inventory/products/:id" element={<RequirePermission permission="inventory:read"><ProductDetailPage /></RequirePermission>} />
           <Route path="inventory/batches/new" element={<RequirePermission permission="inventory:register-entry"><BatchEntryPage /></RequirePermission>} />
           <Route path="inventory/batches/:id" element={<RequirePermission permission="inventory:read"><BatchDetailPage /></RequirePermission>} />
+          <Route path="inventory/sales/new" element={<RequirePermission permission="inventory:register-exit"><SalesPage /></RequirePermission>} />
+          <Route path="inventory/sales" element={<RequirePermission permission="inventory:read"><SalesPage historyOnly /></RequirePermission>} />
           <Route path="inventory/suppliers" element={<RequirePermission permission="suppliers:read"><SuppliersPage /></RequirePermission>} />
           <Route path="inventory/suppliers/new" element={<RequirePermission permission="suppliers:create"><SupplierFormPage /></RequirePermission>} />
           <Route path="inventory/purchase-orders" element={<RequirePermission permission="purchase-orders:read"><PurchaseOrdersPage /></RequirePermission>} />
