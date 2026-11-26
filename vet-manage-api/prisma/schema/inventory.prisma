@@ -44,6 +44,7 @@ model Product {
   category Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   brand    Marca    @relation(fields: [brandId], references: [id], onDelete: Restrict)
   batches  Batch[]
+  purchaseOrderItems PurchaseOrderItem[]
 
   @@index([name])
   @@index([categoryId])

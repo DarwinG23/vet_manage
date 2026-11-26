@@ -12,6 +12,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { PetsModule } from './modules/pets/pets.module.js';
 import { SchedulingModule } from './modules/scheduling/scheduling.module.js';
 import { SuppliersModule } from './modules/suppliers/suppliers.module.js';
+import { PurchaseOrdersModule } from './modules/purchase-orders/purchase-orders.module.js';
 import { PrismaModule } from './infrastructure/database/prisma/prisma.module.js';
 import { RabbitmqModule } from './infrastructure/rabbitmq/rabbitmq.module.js';
 import { RedisModule } from './infrastructure/redis/redis.module.js';
@@ -35,6 +36,7 @@ import { RedisModule } from './infrastructure/redis/redis.module.js';
     PetsModule,
     SchedulingModule,
     SuppliersModule,
+    PurchaseOrdersModule,
   ],
   controllers: [AppController],
   providers: [AppService],
