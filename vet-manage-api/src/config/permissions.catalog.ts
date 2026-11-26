@@ -3,6 +3,7 @@ import { INVENTORY_PERMISSIONS } from './permissions/inventory.permissions.js';
 import { CLINICAL_PERMISSIONS } from './permissions/clinical.permissions.js';
 import { SCHEDULING_PERMISSIONS } from './permissions/scheduling.permissions.js';
 import { SUPPLIERS_PERMISSIONS } from './permissions/suppliers.permissions.js';
+import { PURCHASE_ORDERS_PERMISSIONS } from './permissions/purchase-orders.permissions.js';
 
 export type PermissionKey = `${string}:${string}`;
 export type PermissionDefinition = {
@@ -18,6 +19,7 @@ export const PERMISSION_CATALOGS = [
   INVENTORY_PERMISSIONS,
   SCHEDULING_PERMISSIONS,
   SUPPLIERS_PERMISSIONS,
+  PURCHASE_ORDERS_PERMISSIONS,
 ] as const;
 
 export const PERMISSIONS = PERMISSION_CATALOGS.flat();

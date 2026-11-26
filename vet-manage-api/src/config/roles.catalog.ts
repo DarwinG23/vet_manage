@@ -82,6 +82,7 @@ export const ROLES: readonly RoleDefinition[] = [
       'species:read', 'breeds:read',
       'inventory:read', 'inventory:manage-products', 'inventory:manage-categories', 'inventory:manage-brands',
       'suppliers:create', 'suppliers:read', 'suppliers:update', 'suppliers:deactivate',
+      'purchase-orders:create', 'purchase-orders:read',
       ...procedureCatalog,
       ...schedulingAdmin,
     ],

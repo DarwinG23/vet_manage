@@ -7,7 +7,7 @@ const keysOf = (roleName: string) =>
 
 describe('Catálogos de permisos y roles', () => {
   it('mantiene catálogos separados por módulo y los agrega en una colección plana', () => {
-    expect(PERMISSION_CATALOGS).toHaveLength(5);
+    expect(PERMISSION_CATALOGS).toHaveLength(6);
     expect(PERMISSION_CATALOGS.every((catalog) => catalog.length > 0)).toBe(true);
     expect(PERMISSIONS.length).toBe(PERMISSION_CATALOGS.reduce((total, catalog) => total + catalog.length, 0));
     expect(PERMISSIONS.some((permission) => permission.key === 'inventory:manage-products')).toBe(true);
