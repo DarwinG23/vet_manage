@@ -153,12 +153,15 @@ model InventoryMovement {
   stockBefore   Int                   @map("stock_before")
   stockAfter    Int                   @map("stock_after")
   reason        String?               @db.Text
+  observation   String?               @db.Text
   occurredAt    DateTime              @default(now()) @map("occurred_at")
   userId        String                @map("user_id") @db.Uuid
 
   batch          Batch                 @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  user           User                  @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   @@index([batchId])
+  @@index([batchId, occurredAt])
   @@index([userId])
   @@index([occurredAt])
   @@map("inventory_movements")

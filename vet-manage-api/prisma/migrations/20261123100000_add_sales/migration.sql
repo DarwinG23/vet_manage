@@ -5,7 +5,7 @@ CREATE TYPE "ReturnType" AS ENUM ('CLIENTE', 'VETERINARIA');
 
 ALTER TABLE "categories" ADD COLUMN "allow_returns" BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE "categories" ADD COLUMN "vat" INTEGER NOT NULL DEFAULT 0;
-ALTER TABLE "products" ADD COLUMN "minimum_stock" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "minimum_stock" INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE "batches" ADD COLUMN "promotion_id" UUID;
 
 CREATE TABLE "sales" (
@@ -66,7 +66,7 @@ CREATE TABLE "sale_details" (
   CONSTRAINT "sale_details_pkey" PRIMARY KEY ("id")
 );
 
-CREATE TABLE "inventory_movements" (
+CREATE TABLE IF NOT EXISTS "inventory_movements" (
   "id" UUID NOT NULL,
   "batch_id" UUID NOT NULL,
   "type" "InventoryMovementType" NOT NULL,
@@ -86,14 +86,20 @@ CREATE INDEX "batches_promotion_id_idx" ON "batches"("promotion_id");
 CREATE INDEX "sale_details_sale_id_idx" ON "sale_details"("sale_id");
 CREATE INDEX "sale_details_product_id_idx" ON "sale_details"("product_id");
 CREATE INDEX "sale_details_batch_id_idx" ON "sale_details"("batch_id");
-CREATE INDEX "inventory_movements_batch_id_idx" ON "inventory_movements"("batch_id");
-CREATE INDEX "inventory_movements_user_id_idx" ON "inventory_movements"("user_id");
-CREATE INDEX "inventory_movements_occurred_at_idx" ON "inventory_movements"("occurred_at");
+CREATE INDEX IF NOT EXISTS "inventory_movements_batch_id_idx" ON "inventory_movements"("batch_id");
+CREATE INDEX IF NOT EXISTS "inventory_movements_user_id_idx" ON "inventory_movements"("user_id");
+CREATE INDEX IF NOT EXISTS "inventory_movements_occurred_at_idx" ON "inventory_movements"("occurred_at");
 
 ALTER TABLE "sale_details" ADD CONSTRAINT "sale_details_sale_id_fkey" FOREIGN KEY ("sale_id") REFERENCES "sales"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "sale_details" ADD CONSTRAINT "sale_details_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "products"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "sale_details" ADD CONSTRAINT "sale_details_batch_id_fkey" FOREIGN KEY ("batch_id") REFERENCES "batches"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-ALTER TABLE "inventory_movements" ADD CONSTRAINT "inventory_movements_batch_id_fkey" FOREIGN KEY ("batch_id") REFERENCES "batches"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+DO $migration$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'inventory_movements'::regclass AND conname = 'inventory_movements_batch_id_fkey') THEN
+    ALTER TABLE "inventory_movements" ADD CONSTRAINT "inventory_movements_batch_id_fkey" FOREIGN KEY ("batch_id") REFERENCES "batches"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+  END IF;
+END
+$migration$;
 ALTER TABLE "sales" ADD CONSTRAINT "sales_payment_detail_id_fkey" FOREIGN KEY ("payment_detail_id") REFERENCES "payment_details"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 ALTER TABLE "batches" ADD CONSTRAINT "batches_promotion_id_fkey" FOREIGN KEY ("promotion_id") REFERENCES "promotions"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 ALTER TABLE "product_returns" ADD CONSTRAINT "product_returns_batch_id_fkey" FOREIGN KEY ("batch_id") REFERENCES "batches"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

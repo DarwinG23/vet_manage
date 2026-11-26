@@ -10,6 +10,7 @@ export const INVENTORY_PERMISSIONS = define([
   ['inventory:manage-brands', 'Gestionar marcas'],
   ['inventory:register-entry', 'Registrar entradas de inventario'],
   ['inventory:register-exit', 'Registrar salidas de inventario'],
+  ['inventory:register-write-off', 'Registrar bajas por daño o pérdida'],
   ['inventory:adjust-stock', 'Ajustar existencias'],
   ['inventory:read-reports', 'Consultar reportes de inventario'],
 ]);

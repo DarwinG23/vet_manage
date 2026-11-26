@@ -1,2 +1,2 @@
 -- AlterTable
-ALTER TABLE "products" ADD COLUMN "minimum_stock" INTEGER;
+ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "minimum_stock" INTEGER;
