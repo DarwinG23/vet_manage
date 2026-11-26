@@ -10,6 +10,8 @@ import { ClientsPage } from '../modules/clients/pages/clients-page';
 import { DashboardPage } from '../modules/dashboard/pages/dashboard-page';
 import { BatchDetailPage } from '../modules/inventory/pages/batch-detail-page';
 import { BatchEntryPage } from '../modules/inventory/pages/batch-entry-page';
+import { BatchWriteOffPage } from '../modules/inventory/pages/batch-write-off-page';
+import { InventoryMovementsPage } from '../modules/inventory/pages/inventory-movements-page';
 import { PatientsPage } from '../modules/pets/pages/patients-page';
 import { CatalogPage } from '../modules/inventory/pages/catalog-page';
 import { ProductDetailPage } from '../modules/inventory/pages/product-detail-page';
@@ -47,6 +49,8 @@ export function AppRouter() {
           <Route path="inventory/products/:id" element={<RequirePermission permission="inventory:read"><ProductDetailPage /></RequirePermission>} />
           <Route path="inventory/batches/new" element={<RequirePermission permission="inventory:register-entry"><BatchEntryPage /></RequirePermission>} />
           <Route path="inventory/batches/:id" element={<RequirePermission permission="inventory:read"><BatchDetailPage /></RequirePermission>} />
+          <Route path="inventory/write-offs/new" element={<RequirePermission permission="inventory:register-exit"><BatchWriteOffPage /></RequirePermission>} />
+          <Route path="inventory/movements" element={<RequirePermission permission="inventory:read-reports"><InventoryMovementsPage /></RequirePermission>} />
           <Route path="inventory/suppliers" element={<RequirePermission permission="suppliers:read"><SuppliersPage /></RequirePermission>} />
           <Route path="inventory/suppliers/new" element={<RequirePermission permission="suppliers:create"><SupplierFormPage /></RequirePermission>} />
           <Route path="inventory/suppliers/:id/edit" element={<RequirePermission permission="suppliers:read"><RequirePermission permission="suppliers:update"><SupplierFormPage /></RequirePermission></RequirePermission>} />

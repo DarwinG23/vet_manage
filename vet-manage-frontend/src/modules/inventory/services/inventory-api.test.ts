@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { getJson, patchJson } from '../../../infrastructure/api/http-client';
+import { getJson, patchJson, postJson } from '../../../infrastructure/api/http-client';
 import type { InventoryCategory, ProductDetail } from '../types';
 import { inventoryApi } from './inventory-api';
 
@@ -13,6 +13,21 @@ const categories: InventoryCategory[] = [
   { id: 'category-1', name: 'Accesorios', vatRate: '12.5' },
   { id: 'category-2', name: 'Alimentos', vatRate: null },
 ];
+
+describe('inventoryApi HU-19a', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('envía el contrato de baja al endpoint existente sin elegir el usuario', () => {
+    const draft = { batchId: 'batch-1', quantity: 3, reason: 'Daño' as const, observation: 'Envase roto' };
+    inventoryApi.registerBatchWriteOff(draft);
+    expect(postJson).toHaveBeenCalledWith('/inventory/write-offs', draft);
+  });
+
+  it('consulta la página y el lote del historial con parámetros codificados', () => {
+    inventoryApi.listMovements(2, 'batch-1');
+    expect(getJson).toHaveBeenCalledWith('/inventory/movements?page=2&pageSize=20&batchId=batch-1');
+  });
+});
 
 describe('inventoryApi.getProduct (HU-20)', () => {
   beforeEach(() => vi.clearAllMocks());

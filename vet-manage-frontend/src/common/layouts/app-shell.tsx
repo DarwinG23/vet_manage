@@ -59,6 +59,8 @@ const inventoryNavigation: NavItem[] = [
   { label: 'Categorías', to: '/inventory/categories', icon: FolderIcon, permission: 'inventory:read' },
   { label: 'Marcas', to: '/inventory/brands', icon: TagIcon, permission: 'inventory:read' },
   { label: 'Entrada de lotes', to: '/inventory/batches/new', icon: BoxIcon, permission: 'inventory:register-entry' },
+  { label: 'Baja de lotes', to: '/inventory/write-offs/new', icon: BoxIcon, permission: 'inventory:register-exit' },
+  { label: 'Historial de movimientos', to: '/inventory/movements', icon: FolderIcon, permission: 'inventory:read-reports' },
 ];
 
 const administrationNavigation: NavItem[] = [

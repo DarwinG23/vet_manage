@@ -89,3 +89,37 @@ export type ExpirationAlert = {
   status: 'UPCOMING' | 'EXPIRED';
   label: 'Próximo a caducar' | 'Caducado';
 };
+
+export type BatchWriteOffDraft = {
+  batchId: string;
+  quantity: number;
+  reason: 'Daño' | 'Pérdida';
+  observation?: string;
+};
+
+export type InventoryMovement = {
+  id: string;
+  type: 'ENTRADA' | 'VENTA' | 'USO_CLINICO' | 'AJUSTE' | 'BAJA';
+  quantity: number;
+  reason: string;
+  observation: string | null;
+  previousBalance: number;
+  resultingBalance: number;
+  occurredAt: string;
+  batch: { id: string; code: string; product: { id: string; code: string; name: string } };
+  user: { id: string; firstName: string; lastName: string };
+};
+
+export type BatchWriteOffResult = {
+  batch: { id: string; productId: string; availableQuantity: number };
+  product: { id: string; stock: number };
+  movement: InventoryMovement;
+};
+
+export type InventoryMovementsPage = {
+  items: InventoryMovement[];
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+};

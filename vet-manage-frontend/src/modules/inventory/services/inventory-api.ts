@@ -1,7 +1,15 @@
 import { getJson, patchJson, postJson } from '../../../infrastructure/api/http-client';
-import type { BatchDetail, BatchEntryDraft, BatchEntryResult, CatalogItem, ExpirationAlert, InventoryCategory, Product, ProductDetail, ProductDraft, ProductSearchFilters } from '../types';
+import type { BatchDetail, BatchEntryDraft, BatchEntryResult, BatchWriteOffDraft, BatchWriteOffResult, CatalogItem, ExpirationAlert, InventoryCategory, InventoryMovementsPage, Product, ProductDetail, ProductDraft, ProductSearchFilters } from '../types';
 
 export const inventoryApi = {
+  registerBatchWriteOff(draft: BatchWriteOffDraft) {
+    return postJson<BatchWriteOffResult, BatchWriteOffDraft>('/inventory/write-offs', draft);
+  },
+  listMovements(page = 1, batchId?: string) {
+    const query = new URLSearchParams({ page: String(page), pageSize: '20' });
+    if (batchId) query.set('batchId', batchId);
+    return getJson<InventoryMovementsPage>(`/inventory/movements?${query.toString()}`);
+  },
   listProducts(search = '', filters: ProductSearchFilters = {}) {
     const query = new URLSearchParams();
     const normalizedSearch = search.trim();

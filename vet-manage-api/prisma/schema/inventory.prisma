@@ -64,8 +64,38 @@ model Batch {
   updatedAt       DateTime @updatedAt @map("updated_at")
 
   product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  movimientos MovimientoInventario[]
 
   @@index([productId])
   @@index([expirationDate])
   @@map("batches")
+}
+
+enum TipoMovimiento {
+  ENTRADA
+  VENTA
+  USO_CLINICO
+  AJUSTE
+  BAJA
+}
+
+model MovimientoInventario {
+  id              String         @id @default(uuid()) @db.Uuid
+  loteId          String         @map("batch_id") @db.Uuid
+  tipo            TipoMovimiento @map("type")
+  cantidad        Int            @map("quantity")
+  saldoAnterior   Int            @map("previous_balance")
+  saldoResultante Int            @map("resulting_balance")
+  motivo          String         @map("reason") @db.VarChar(50)
+  observacion     String?        @map("observation") @db.Text
+  fechaHora       DateTime       @default(now()) @map("occurred_at")
+  usuarioId       String         @map("user_id") @db.Uuid
+
+  lote    Batch @relation(fields: [loteId], references: [id], onDelete: Restrict)
+  usuario User  @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
+
+  @@index([loteId, fechaHora])
+  @@index([usuarioId])
+  @@index([fechaHora])
+  @@map("inventory_movements")
 }

@@ -66,6 +66,7 @@ model User {
   createdRoles      Role[]        @relation("RoleCreatedBy")
   assignedUserRoles UserRole[]    @relation("UserRoleAssignedBy")
   auditLogs         AuditLog[]
+  movimientosInventario MovimientoInventario[]
 
   // agendamiento de Citas
   horariosBase            HorarioBase[]    @relation("HorarioBaseVeterinario")
