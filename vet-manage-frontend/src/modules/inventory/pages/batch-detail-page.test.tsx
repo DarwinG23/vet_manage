@@ -119,6 +119,7 @@ describe('BatchDetailPage manual stock adjustment (HU-11)', () => {
     ['decimal balance', '5.5', 'Conteo físico', 'El saldo debe ser un número entero mayor o igual a cero, sin decimales'],
     ['text balance', 'abc', 'Conteo físico', 'Ingresa un número entero mayor o igual a cero; no se permiten letras'],
     ['missing reason', '18', '', 'Debe ingresar el motivo del ajuste'],
+    ['numeric-only reason', '18', '12345', 'El motivo debe incluir letras, no solo números'],
   ])('rejects a %s without changing stock', async (_scenario, newQuantity, reason, message) => {
     const user = userEvent.setup();
     renderPage(['inventory:read', 'inventory:adjust-stock']);

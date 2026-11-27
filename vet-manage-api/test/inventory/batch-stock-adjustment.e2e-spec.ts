@@ -155,6 +155,7 @@ describe('Ajuste manual de existencias por lote (HU-11, e2e)', () => {
     ['text balance', { newQuantity: 'abc', reason: 'Conteo' }],
     ['missing balance', { newQuantity: '', reason: 'Conteo' }],
     ['missing reason', { newQuantity: 18, reason: ' ' }],
+    ['numeric-only reason', { newQuantity: 18, reason: '12345' }],
   ])('rejects a %s without changing either stock or movement history', async (_scenario, body) => {
     await postAdjustment(body).expect(400);
 
