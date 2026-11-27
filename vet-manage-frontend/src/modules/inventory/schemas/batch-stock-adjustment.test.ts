@@ -36,10 +36,20 @@ describe('validateBatchStockAdjustmentDraft (HU-11)', () => {
     });
   });
 
-  it('requires a non-empty reason', () => {
-    expect(validateBatchStockAdjustmentDraft({ newQuantity: '18', reason: '  ' })).toMatchObject({
+  it.each([
+    ['empty reason', '  ', BATCH_STOCK_ADJUSTMENT_MESSAGES.reasonRequired],
+    ['numeric-only reason', '12345', BATCH_STOCK_ADJUSTMENT_MESSAGES.reasonMustContainText],
+  ])('rejects a %s', (_scenario, reason, message) => {
+    expect(validateBatchStockAdjustmentDraft({ newQuantity: '18', reason })).toMatchObject({
       valid: false,
-      errors: { reason: BATCH_STOCK_ADJUSTMENT_MESSAGES.reasonRequired },
+      errors: { reason: message },
+    });
+  });
+
+  it('accepts a textual reason that also contains numbers', () => {
+    expect(validateBatchStockAdjustmentDraft({ newQuantity: '18', reason: 'Diferencia de 2 unidades en lote 123' })).toMatchObject({
+      valid: true,
+      value: { reason: 'Diferencia de 2 unidades en lote 123' },
     });
   });
 });
