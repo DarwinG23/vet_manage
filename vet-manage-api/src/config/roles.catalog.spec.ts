@@ -49,3 +49,21 @@ describe('RBAC de órdenes de compra (HU-27)', () => {
     }
   });
 });
+
+describe('RBAC de ajuste manual de existencias (HU-11)', () => {
+  it('concede inventory:adjust-stock al Gerente, Bodeguero y Superadministrador', () => {
+    for (const name of ['manager', 'warehouse_keeper', 'superadmin']) {
+      const role = ROLES.find((candidate) => candidate.name === name);
+      expect(role?.permissions, name).toContain('inventory:adjust-stock');
+    }
+  });
+
+  it('no concede automáticamente el ajuste a otros roles', () => {
+    const rolesWithoutAdjustment = ROLES.filter(({ name }) =>
+      !['manager', 'warehouse_keeper', 'superadmin'].includes(name),
+    );
+    for (const role of rolesWithoutAdjustment) {
+      expect(role.permissions, role.name).not.toContain('inventory:adjust-stock');
+    }
+  });
+});

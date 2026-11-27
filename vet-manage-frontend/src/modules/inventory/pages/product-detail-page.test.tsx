@@ -107,6 +107,8 @@ describe('ProductDetailPage inventory consultation (HU-20)', () => {
     expect(screen.getByText('2026-11-18')).toBeInTheDocument();
     expect(screen.getByRole('row', { name: /L-2026-001.*10/ })).toBeInTheDocument();
     expect(screen.getByRole('row', { name: /L-2026-002.*5/ })).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: 'Ver lote' }).map((link) => link.getAttribute('href')))
+      .toEqual(['/inventory/batches/batch-1', '/inventory/batches/batch-2']);
     expect(inventoryApi.getProduct).toHaveBeenCalledWith('product-1');
   });
 

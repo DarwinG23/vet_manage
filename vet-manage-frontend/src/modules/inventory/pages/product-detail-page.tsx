@@ -146,6 +146,7 @@ export function ProductDetailPage() {
                       <th scope="col">Fecha de caducidad</th>
                       <th scope="col">Cantidad disponible</th>
                       <th scope="col">Estado</th>
+                      <th scope="col">Detalle</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -161,6 +162,7 @@ export function ProductDetailPage() {
                               {expired ? 'Caducado' : 'No caducado'}
                             </span>
                           </td>
+                          <td><Link className="button button--ghost button--small" to={`/inventory/batches/${batch.id}`}>Ver lote</Link></td>
                         </tr>
                       );
                     })}

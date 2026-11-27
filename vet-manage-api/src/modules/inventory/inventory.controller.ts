@@ -1,6 +1,9 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query, Req } from '@nestjs/common';
+import { ApiException } from '../../common/errors/api-exception.js';
 import { success } from '../../common/errors/api-response.js';
 import { RequirePermissions } from '../identity/decorators/require-permissions.decorator.js';
+import type { AuthenticatedRequest } from '../identity/types/authenticated-request.js';
+import { AdjustBatchStockDto } from './dtos/adjust-batch-stock.dto.js';
 import { CreateCatalogItemDto } from './dtos/create-catalog-item.dto.js';
 import { CreateProductDto } from './dtos/create-product.dto.js';
 import { ListProductsQueryDto } from './dtos/list-products-query.dto.js';
@@ -73,6 +76,27 @@ export class InventoryController {
   @RequirePermissions('inventory:read')
   async getBatch(@Param('id') id: string) {
     return success(await this.inventoryService.getBatch(id));
+  }
+
+  @Get('batches/:id/movements')
+  @RequirePermissions('inventory:read')
+  async listBatchMovements(@Param('id', ParseUUIDPipe) id: string) {
+    return success(await this.inventoryService.listBatchMovements(id));
+  }
+
+  @Post('batches/:id/adjustments')
+  @RequirePermissions('inventory:adjust-stock')
+  async adjustBatchStock(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() input: AdjustBatchStockDto,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    if (!request.user) throw ApiException.unauthorized();
+    return success(
+      await this.inventoryService.adjustBatchStock(id, input, request.user.id),
+      'Existencias del lote ajustadas correctamente',
+      201,
+    );
   }
 
   @Patch('batches/:id/expiration-date')

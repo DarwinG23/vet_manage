@@ -80,7 +80,7 @@ export const ROLES: readonly RoleDefinition[] = [
     permissions: [
       ...clientsAndPetsFull,
       'species:read', 'breeds:read',
-      'inventory:read', 'inventory:manage-products', 'inventory:manage-categories', 'inventory:manage-brands',
+      'inventory:read', 'inventory:manage-products', 'inventory:manage-categories', 'inventory:manage-brands', 'inventory:adjust-stock',
       'suppliers:create', 'suppliers:read', 'suppliers:update', 'suppliers:deactivate',
       'purchase-orders:create', 'purchase-orders:read',
       ...procedureCatalog,
@@ -150,7 +150,7 @@ export const ROLES: readonly RoleDefinition[] = [
     displayName: 'Bodeguero',
     description: 'Gestiona inventario. Sus permisos se definen en el módulo de inventario.',
     category: 'STAFF',
-    permissions: ['inventory:read', 'inventory:manage-products', 'inventory:manage-categories', 'inventory:manage-brands', 'inventory:register-entry'],
+    permissions: ['inventory:read', 'inventory:manage-products', 'inventory:manage-categories', 'inventory:manage-brands', 'inventory:register-entry', 'inventory:adjust-stock'],
   },
   {
     name: 'client',

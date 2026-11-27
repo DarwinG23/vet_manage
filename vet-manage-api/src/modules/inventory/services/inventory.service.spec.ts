@@ -919,4 +919,197 @@ describe('InventoryService', () => {
       await expect(service.getProduct('product-1')).resolves.toMatchObject({ id: 'product-1', minimumStock: null });
     });
   });
+
+  describe('adjustBatchStock (HU-11)', () => {
+    const BATCH_ID = '123e4567-e89b-42d3-a456-426614174001';
+    const PRODUCT_ID = '123e4567-e89b-42d3-a456-426614174000';
+    const USER_ID = '123e4567-e89b-42d3-a456-426614174002';
+
+    function createAdjustmentMock({ batchQuantity = 20, productStock = 30 } = {}) {
+      const state = { batchQuantity, productStock };
+      const tx = {
+        batch: {
+          findUnique: vi.fn(async () => ({ id: BATCH_ID, productId: PRODUCT_ID, availableQuantity: state.batchQuantity })),
+          updateMany: vi.fn(async ({ where, data }: {
+            where: { id: string; availableQuantity: number };
+            data: { availableQuantity: number };
+          }) => {
+            if (where.id !== BATCH_ID || where.availableQuantity !== state.batchQuantity) return { count: 0 };
+            state.batchQuantity = data.availableQuantity;
+            return { count: 1 };
+          }),
+        },
+        product: {
+          findUnique: vi.fn(async () => ({ id: PRODUCT_ID, stock: state.productStock })),
+          updateMany: vi.fn(async ({ where, data }: {
+            where: { id: string; stock?: { gte: number } };
+            data: { stock: { increment?: number; decrement?: number } };
+          }) => {
+            if (where.id !== PRODUCT_ID || (where.stock?.gte !== undefined && state.productStock < where.stock.gte)) {
+              return { count: 0 };
+            }
+            state.productStock += data.stock.increment ?? -(data.stock.decrement ?? 0);
+            return { count: 1 };
+          }),
+        },
+        inventoryMovement: {
+          create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => ({
+            id: 'movement-1',
+            occurredAt: new Date('2026-11-26T12:00:00.000Z'),
+            ...data,
+          })),
+        },
+      };
+      const prisma = {
+        $transaction: vi.fn(async (callback: (client: typeof tx) => Promise<unknown>) => callback(tx)),
+      };
+      return { prisma, tx, state };
+    }
+
+    it('decreases the batch and aggregate product stock and records a signed movement atomically', async () => {
+      const { prisma, tx, state } = createAdjustmentMock();
+      const service = new InventoryService(prisma as never);
+
+      const result = await service.adjustBatchStock(BATCH_ID, {
+        newQuantity: 18,
+        reason: ' Diferencia detectada en conteo físico ',
+      }, USER_ID);
+
+      expect(state).toEqual({ batchQuantity: 18, productStock: 28 });
+      expect(tx.batch.updateMany).toHaveBeenCalledWith({
+        where: { id: BATCH_ID, availableQuantity: 20 },
+        data: { availableQuantity: 18 },
+      });
+      expect(tx.product.updateMany).toHaveBeenCalledWith({
+        where: { id: PRODUCT_ID, stock: { gte: 2 } },
+        data: { stock: { decrement: 2 } },
+      });
+      expect(tx.inventoryMovement.create).toHaveBeenCalledWith({
+        data: {
+          batchId: BATCH_ID,
+          type: 'AJUSTE',
+          quantity: -2,
+          stockBefore: 20,
+          stockAfter: 18,
+          reason: 'Diferencia detectada en conteo físico',
+          userId: USER_ID,
+        },
+      });
+      expect(result).toMatchObject({ type: 'AJUSTE', quantity: -2, stockBefore: 20, stockAfter: 18, productStock: 28 });
+    });
+
+    it('increases aggregate stock when the physical count is higher', async () => {
+      const { prisma, tx, state } = createAdjustmentMock({ batchQuantity: 18, productStock: 28 });
+      const service = new InventoryService(prisma as never);
+
+      const result = await service.adjustBatchStock(BATCH_ID, { newQuantity: '20', reason: 'Conteo físico' }, USER_ID);
+
+      expect(state).toEqual({ batchQuantity: 20, productStock: 30 });
+      expect(tx.product.updateMany).toHaveBeenCalledWith({
+        where: { id: PRODUCT_ID },
+        data: { stock: { increment: 2 } },
+      });
+      expect(result).toMatchObject({ quantity: 2, stockBefore: 18, stockAfter: 20, productStock: 30 });
+    });
+
+    it('allows a zero balance and records a no-op adjustment without changing product stock', async () => {
+      const { prisma, tx, state } = createAdjustmentMock({ batchQuantity: 10, productStock: 10 });
+      const service = new InventoryService(prisma as never);
+
+      const result = await service.adjustBatchStock(BATCH_ID, { newQuantity: 0, reason: 'Conteo sin unidades' }, USER_ID);
+      const noOp = await service.adjustBatchStock(BATCH_ID, { newQuantity: 0, reason: 'Confirmación de saldo' }, USER_ID);
+
+      expect(result).toMatchObject({ quantity: -10, stockBefore: 10, stockAfter: 0, productStock: 0 });
+      expect(noOp).toMatchObject({ quantity: 0, stockBefore: 0, stockAfter: 0, productStock: 0 });
+      expect(state).toEqual({ batchQuantity: 0, productStock: 0 });
+      expect(tx.product.updateMany).toHaveBeenCalledTimes(1);
+      expect(tx.inventoryMovement.create).toHaveBeenCalledTimes(2);
+    });
+
+    it('rejects invalid quantity or missing reason before opening a transaction', async () => {
+      const { prisma, tx } = createAdjustmentMock();
+      const service = new InventoryService(prisma as never);
+
+      await expect(service.adjustBatchStock(BATCH_ID, { newQuantity: -3, reason: 'Conteo' }, USER_ID))
+        .rejects.toMatchObject({ statusCode: 400, message: 'El saldo no puede ser negativo; ingresa un número entero mayor o igual a cero' });
+      await expect(service.adjustBatchStock(BATCH_ID, { newQuantity: 18, reason: ' ' }, USER_ID))
+        .rejects.toMatchObject({ statusCode: 400, message: 'Debe ingresar el motivo del ajuste' });
+      await expect(service.adjustBatchStock(BATCH_ID, null, USER_ID)).rejects.toMatchObject({ statusCode: 400 });
+
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+      expect(tx.batch.updateMany).not.toHaveBeenCalled();
+      expect(tx.inventoryMovement.create).not.toHaveBeenCalled();
+    });
+
+    it('does not change stock or create history when the lot is missing or has changed concurrently', async () => {
+      const missing = createAdjustmentMock();
+      missing.tx.batch.findUnique.mockResolvedValue(null);
+      const missingService = new InventoryService(missing.prisma as never);
+      await expect(missingService.adjustBatchStock(BATCH_ID, { newQuantity: 18, reason: 'Conteo' }, USER_ID))
+        .rejects.toMatchObject({ statusCode: 404, message: 'Lote no encontrado' });
+      expect(missing.tx.inventoryMovement.create).not.toHaveBeenCalled();
+
+      const stale = createAdjustmentMock();
+      stale.tx.batch.updateMany.mockResolvedValue({ count: 0 });
+      const staleService = new InventoryService(stale.prisma as never);
+      await expect(staleService.adjustBatchStock(BATCH_ID, { newQuantity: 18, reason: 'Conteo' }, USER_ID))
+        .rejects.toMatchObject({ statusCode: 409 });
+      expect(stale.tx.product.updateMany).not.toHaveBeenCalled();
+      expect(stale.tx.inventoryMovement.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects a decrease that would make the aggregate product stock negative', async () => {
+      const { prisma, tx } = createAdjustmentMock({ batchQuantity: 5, productStock: 1 });
+      const service = new InventoryService(prisma as never);
+
+      await expect(service.adjustBatchStock(BATCH_ID, { newQuantity: 0, reason: 'Conteo' }, USER_ID))
+        .rejects.toMatchObject({ statusCode: 400, message: 'El stock total del producto no permite aplicar esta disminución' });
+      expect(tx.inventoryMovement.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('listBatchMovements (HU-11)', () => {
+    it('returns lot movements newest-first with the responsible user name', async () => {
+      const occurredAt = new Date('2026-11-26T12:00:00.000Z');
+      const movement = {
+        id: 'movement-1', batchId: 'batch-1', type: 'AJUSTE', quantity: -2,
+        stockBefore: 20, stockAfter: 18, reason: 'Conteo físico', occurredAt, userId: 'user-1',
+      };
+      const batchFindUnique = vi.fn().mockResolvedValue({ id: 'batch-1' });
+      const movementFindMany = vi.fn().mockResolvedValue([movement]);
+      const userFindMany = vi.fn().mockResolvedValue([{
+        id: 'user-1', person: { firstName: 'Ana', lastName: 'Pérez', email: 'ana@example.com' },
+      }]);
+      const service = new InventoryService({
+        batch: { findUnique: batchFindUnique },
+        inventoryMovement: { findMany: movementFindMany },
+        user: { findMany: userFindMany },
+      } as never);
+
+      await expect(service.listBatchMovements('batch-1')).resolves.toEqual([{
+        ...movement,
+        occurredAt: occurredAt.toISOString(),
+        userName: 'Ana Pérez',
+      }]);
+      expect(movementFindMany).toHaveBeenCalledWith({
+        where: { batchId: 'batch-1' },
+        orderBy: [{ occurredAt: 'desc' }, { id: 'desc' }],
+      });
+      expect(userFindMany).toHaveBeenCalledWith({
+        where: { id: { in: ['user-1'] } },
+        select: { id: true, person: { select: { firstName: true, lastName: true, email: true } } },
+      });
+    });
+
+    it('returns not found when the requested lot does not exist', async () => {
+      const movementFindMany = vi.fn();
+      const service = new InventoryService({
+        batch: { findUnique: vi.fn().mockResolvedValue(null) },
+        inventoryMovement: { findMany: movementFindMany },
+      } as never);
+
+      await expect(service.listBatchMovements('missing')).rejects.toMatchObject({ statusCode: 404 });
+      expect(movementFindMany).not.toHaveBeenCalled();
+    });
+  });
 });
