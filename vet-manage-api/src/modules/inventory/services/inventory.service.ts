@@ -8,7 +8,6 @@ import { CreateProductDto } from '../dtos/create-product.dto.js';
 import { RegisterBatchEntryDto } from '../dtos/register-batch-entry.dto.js';
 import { CATEGORY_VAT_RATE_PATTERN } from '../dtos/update-category-vat.dto.js';
 import { validateBatchEntryInput } from './batch-entry-input.service.js';
-import { validateBatchStockAdjustmentInput } from './batch-stock-adjustment-input.service.js';
 import type { ListProductsQueryDto } from '../dtos/list-products-query.dto.js';
 import { findExpirationAlerts, getExpirationAlertCutoff, isExpirationDateExpired } from './expiration-alerts.service.js';
 import { validateMinimumStockInput } from './minimum-stock-input.service.js';
@@ -157,7 +156,7 @@ export class InventoryService {
     try {
       const batch = await this.prisma.batch.findUnique({
         where: { id },
-        include: { product: { select: { id: true, code: true, name: true, stock: true } } },
+        include: { product: { select: { id: true, code: true, name: true } } },
       });
       if (!batch) throw ApiException.notFound('Lote no encontrado');
 
@@ -171,131 +170,6 @@ export class InventoryService {
         product: batch.product,
       };
     } catch (error) {
-      if (this.isNotFoundError(error)) throw ApiException.notFound('Lote no encontrado');
-      throw error;
-    }
-  }
-
-  // HU-11: fija el nuevo saldo del lote y refleja la diferencia en el total del producto.
-  // El movimiento y ambas existencias se guardan juntos para no dejar saldos parciales.
-  async adjustBatchStock(id: string, input: unknown, userId: string) {
-    const validation = validateBatchStockAdjustmentInput(input);
-    if (!validation.valid) {
-      const messages = Object.values(validation.errors);
-      throw ApiException.badRequest(
-        messages.length === 1 ? messages[0] : 'Revisa los datos del ajuste de existencias',
-        messages,
-      );
-    }
-
-    const { newQuantity, reason } = validation.value;
-    try {
-      return await this.prisma.$transaction(async (tx) => {
-        const batch = await tx.batch.findUnique({
-          where: { id },
-          select: { id: true, productId: true, availableQuantity: true },
-        });
-        if (!batch) throw ApiException.notFound('Lote no encontrado');
-
-        const product = await tx.product.findUnique({
-          where: { id: batch.productId },
-          select: { id: true, stock: true },
-        });
-        if (!product) throw ApiException.notFound('Producto del lote no encontrado');
-
-        const stockBefore = batch.availableQuantity;
-        const difference = newQuantity - stockBefore;
-        const updatedBatch = await tx.batch.updateMany({
-          where: { id, availableQuantity: stockBefore },
-          data: { availableQuantity: newQuantity },
-        });
-        if (updatedBatch.count !== 1) {
-          throw ApiException.conflict('El saldo del lote cambió mientras se procesaba el ajuste. Actualiza e inténtalo de nuevo.');
-        }
-
-        if (difference < 0) {
-          const updatedProduct = await tx.product.updateMany({
-            where: { id: product.id, stock: { gte: -difference } },
-            data: { stock: { decrement: -difference } },
-          });
-          if (updatedProduct.count !== 1) {
-            throw ApiException.badRequest('El stock total del producto no permite aplicar esta disminución');
-          }
-        } else if (difference > 0) {
-          const updatedProduct = await tx.product.updateMany({
-            where: { id: product.id },
-            data: { stock: { increment: difference } },
-          });
-          if (updatedProduct.count !== 1) throw ApiException.notFound('Producto del lote no encontrado');
-        }
-
-        const movement = await tx.inventoryMovement.create({
-          data: {
-            batchId: id,
-            type: 'AJUSTE',
-            quantity: difference,
-            stockBefore,
-            stockAfter: newQuantity,
-            reason,
-            userId,
-          },
-        });
-        const updatedProduct = await tx.product.findUnique({ where: { id: product.id }, select: { stock: true } });
-
-        return {
-          id: movement.id,
-          batchId: movement.batchId,
-          type: movement.type,
-          quantity: movement.quantity,
-          stockBefore: movement.stockBefore,
-          stockAfter: movement.stockAfter,
-          reason: movement.reason,
-          occurredAt: movement.occurredAt.toISOString(),
-          userId: movement.userId,
-          productStock: updatedProduct?.stock ?? product.stock + difference,
-        };
-      });
-    } catch (error) {
-      if (error instanceof ApiException) throw error;
-      if (this.isNotFoundError(error)) throw ApiException.notFound('Lote no encontrado');
-      throw error;
-    }
-  }
-
-  async listBatchMovements(id: string) {
-    try {
-      const batch = await this.prisma.batch.findUnique({ where: { id }, select: { id: true } });
-      if (!batch) throw ApiException.notFound('Lote no encontrado');
-
-      const movements = await this.prisma.inventoryMovement.findMany({
-        where: { batchId: id },
-        orderBy: [{ occurredAt: 'desc' }, { id: 'desc' }],
-      });
-      const userIds = [...new Set(movements.map(({ userId }) => userId))];
-      const users = userIds.length === 0 ? [] : await this.prisma.user.findMany({
-        where: { id: { in: userIds } },
-        select: { id: true, person: { select: { firstName: true, lastName: true, email: true } } },
-      });
-      const usersById = new Map(users.map((user) => [user.id, user]));
-
-      return movements.map((movement) => {
-        const person = usersById.get(movement.userId)?.person;
-        const fullName = person ? `${person.firstName} ${person.lastName}`.trim() : '';
-        return {
-          id: movement.id,
-          batchId: movement.batchId,
-          type: movement.type,
-          quantity: movement.quantity,
-          stockBefore: movement.stockBefore,
-          stockAfter: movement.stockAfter,
-          reason: movement.reason,
-          occurredAt: movement.occurredAt.toISOString(),
-          userId: movement.userId,
-          userName: fullName || person?.email || 'Usuario no disponible',
-        };
-      });
-    } catch (error) {
-      if (error instanceof ApiException) throw error;
       if (this.isNotFoundError(error)) throw ApiException.notFound('Lote no encontrado');
       throw error;
     }

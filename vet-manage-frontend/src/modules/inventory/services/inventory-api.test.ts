@@ -62,35 +62,6 @@ describe('inventoryApi.getProduct (HU-20)', () => {
   });
 });
 
-describe('inventoryApi batch stock adjustment (HU-11)', () => {
-  beforeEach(() => vi.clearAllMocks());
-
-  it('loads movement history for the selected lot', async () => {
-    const movements = [{
-      id: 'movement-1', batchId: 'batch-1', type: 'AJUSTE' as const, quantity: -2,
-      stockBefore: 20, stockAfter: 18, reason: 'Conteo físico', occurredAt: '2026-11-26T12:00:00.000Z',
-      userId: 'user-1', userName: 'Ana Pérez',
-    }];
-    vi.mocked(getJson).mockResolvedValue(movements as never);
-
-    await expect(inventoryApi.listBatchMovements('batch-1')).resolves.toEqual(movements);
-    expect(getJson).toHaveBeenCalledWith('/inventory/batches/batch-1/movements');
-  });
-
-  it('posts the new lot balance and required reason to the adjustment endpoint', async () => {
-    const result = {
-      id: 'movement-1', batchId: 'batch-1', type: 'AJUSTE' as const, quantity: -2,
-      stockBefore: 20, stockAfter: 18, reason: 'Conteo físico', occurredAt: '2026-11-26T12:00:00.000Z',
-      userId: 'user-1', productStock: 28,
-    };
-    vi.mocked(postJson).mockResolvedValue(result as never);
-    const draft = { newQuantity: 18, reason: 'Conteo físico' };
-
-    await expect(inventoryApi.adjustBatchStock('batch-1', draft)).resolves.toEqual(result);
-    expect(postJson).toHaveBeenCalledWith('/inventory/batches/batch-1/adjustments', draft);
-  });
-});
-
 describe('inventoryApi VAT contract', () => {
   beforeEach(() => {
     vi.clearAllMocks();
