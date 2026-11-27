@@ -77,7 +77,31 @@ export type BatchDetail = {
   expirationDate: string;
   initialQuantity: number;
   availableQuantity: number;
-  product: { id: string; code: string; name: string };
+  product: { id: string; code: string; name: string; stock: number };
+};
+
+export type InventoryMovementType = 'ENTRADA' | 'VENTA' | 'USO_CLINICO' | 'AJUSTE' | 'BAJA';
+
+export type BatchInventoryMovement = {
+  id: string;
+  batchId: string;
+  type: InventoryMovementType;
+  quantity: number;
+  stockBefore: number;
+  stockAfter: number;
+  reason: string | null;
+  occurredAt: string;
+  userId: string;
+  userName: string;
+};
+
+export type BatchStockAdjustmentDraft = {
+  newQuantity: number;
+  reason: string;
+};
+
+export type BatchStockAdjustmentResult = Omit<BatchInventoryMovement, 'userName'> & {
+  productStock: number;
 };
 
 export type ExpirationAlert = {

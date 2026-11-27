@@ -19,6 +19,42 @@ describe('InventoryController RBAC (HU-01)', () => {
     }
   });
 
+  it('protects lot movement history with inventory:read and adjustments with inventory:adjust-stock', () => {
+    expect(permissionOf('listBatchMovements')).toEqual(['inventory:read']);
+    expect(permissionOf('adjustBatchStock')).toEqual(['inventory:adjust-stock']);
+  });
+
+  it('returns lot movements in the standard response envelope', async () => {
+    const movements = [{ id: 'movement-1', type: 'AJUSTE', quantity: -2, userName: 'Ana Pérez' }];
+    const listBatchMovements = vi.fn().mockResolvedValue(movements);
+    const controller = new InventoryController({ listBatchMovements } as never);
+
+    await expect(controller.listBatchMovements('batch-1')).resolves.toMatchObject({
+      statusCode: 200,
+      success: true,
+      data: movements,
+    });
+    expect(listBatchMovements).toHaveBeenCalledWith('batch-1');
+  });
+
+  it('records an adjustment with the authenticated user and returns 201', async () => {
+    const adjustment = { id: 'movement-1', batchId: 'batch-1', type: 'AJUSTE', quantity: -2 };
+    const adjustBatchStock = vi.fn().mockResolvedValue(adjustment);
+    const controller = new InventoryController({ adjustBatchStock } as never);
+
+    await expect(controller.adjustBatchStock(
+      'batch-1',
+      { newQuantity: 18, reason: 'Conteo físico' },
+      { user: { id: 'user-1', personId: 'person-1' } } as never,
+    )).resolves.toMatchObject({
+      statusCode: 201,
+      success: true,
+      message: 'Existencias del lote ajustadas correctamente',
+      data: adjustment,
+    });
+    expect(adjustBatchStock).toHaveBeenCalledWith('batch-1', { newQuantity: 18, reason: 'Conteo físico' }, 'user-1');
+  });
+
   it('protects product inventory detail with JWT and inventory:read', () => {
     const handler = Object.getOwnPropertyDescriptor(InventoryController.prototype, 'getProduct')?.value;
 
