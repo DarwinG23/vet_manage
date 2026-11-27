@@ -7,9 +7,9 @@ describe('validateBatchStockAdjustmentInput (HU-11)', () => {
     ['18', 18],
     [20, 20],
   ])('accepts the non-negative integer balance %s', (newQuantity, expected) => {
-    expect(validateBatchStockAdjustmentInput({ newQuantity, reason: ' Conteo físico ' })).toEqual({
+    expect(validateBatchStockAdjustmentInput({ newQuantity, reason: ' Conteo físico de 2 unidades ' })).toEqual({
       valid: true,
-      value: { newQuantity: expected, reason: 'Conteo físico' },
+      value: { newQuantity: expected, reason: 'Conteo físico de 2 unidades' },
       errors: {},
     });
   });
@@ -53,6 +53,20 @@ describe('validateBatchStockAdjustmentInput (HU-11)', () => {
     expect(validateBatchStockAdjustmentInput({ newQuantity: 18, reason })).toMatchObject({
       valid: false,
       errors: { reason: BATCH_STOCK_ADJUSTMENT_MESSAGES.reasonRequired },
+    });
+  });
+
+  it.each(['12345', '123 456', '---'])('rejects a reason without letters (%s)', (reason) => {
+    expect(validateBatchStockAdjustmentInput({ newQuantity: 18, reason })).toMatchObject({
+      valid: false,
+      errors: { reason: BATCH_STOCK_ADJUSTMENT_MESSAGES.reasonMustContainText },
+    });
+  });
+
+  it('accepts a reason with text and numeric details', () => {
+    expect(validateBatchStockAdjustmentInput({ newQuantity: 18, reason: 'Diferencia de 2 unidades en lote 123' })).toMatchObject({
+      valid: true,
+      value: { reason: 'Diferencia de 2 unidades en lote 123' },
     });
   });
 });
