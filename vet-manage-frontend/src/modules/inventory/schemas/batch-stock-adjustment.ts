@@ -22,7 +22,6 @@ export const BATCH_STOCK_ADJUSTMENT_MESSAGES = {
   quantityNotNumeric: 'Ingresa un número entero mayor o igual a cero; no se permiten letras',
   quantityTooLarge: 'El saldo supera el máximo permitido para un lote',
   reasonRequired: 'Debe ingresar el motivo del ajuste',
-  reasonMustContainText: 'El motivo debe incluir letras, no solo números',
 } as const;
 
 const MAX_QUANTITY = 2_147_483_647;
@@ -56,7 +55,6 @@ export function validateBatchStockAdjustmentDraft(
   }
 
   if (!reason) errors.reason = BATCH_STOCK_ADJUSTMENT_MESSAGES.reasonRequired;
-  else if (!/\p{L}/u.test(reason)) errors.reason = BATCH_STOCK_ADJUSTMENT_MESSAGES.reasonMustContainText;
 
   if (Object.keys(errors).length > 0 || newQuantity === undefined) {
     return { valid: false, value: null, errors };
