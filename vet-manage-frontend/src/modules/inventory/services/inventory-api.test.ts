@@ -14,6 +14,21 @@ const categories: InventoryCategory[] = [
   { id: 'category-2', name: 'Alimentos', vatRate: null },
 ];
 
+describe('inventoryApi HU-19a', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('envía el contrato de baja al endpoint existente sin elegir el usuario', () => {
+    const draft = { batchId: 'batch-1', quantity: 3, reason: 'Daño' as const, observation: 'Envase roto' };
+    inventoryApi.registerBatchWriteOff(draft);
+    expect(postJson).toHaveBeenCalledWith('/inventory/write-offs', draft);
+  });
+
+  it('consulta la página y el lote del historial con parámetros codificados', () => {
+    inventoryApi.listMovements(2, 'batch-1');
+    expect(getJson).toHaveBeenCalledWith('/inventory/movements?page=2&pageSize=20&batchId=batch-1');
+  });
+});
+
 describe('inventoryApi.getProduct (HU-20)', () => {
   beforeEach(() => vi.clearAllMocks());
 

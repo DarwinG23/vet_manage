@@ -1,0 +1,113 @@
+.write-off-fields {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.write-off-form .field {
+  align-content: start;
+}
+
+.write-off-form .field input,
+.write-off-form .field select {
+  height: 42px;
+}
+
+.write-off-balance {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.write-off-balance > div {
+  display: grid;
+  gap: 6px;
+  padding: 15px;
+  border: 1px solid #e8edf1;
+  border-radius: 10px;
+  background: #f8faff;
+}
+
+.write-off-balance span {
+  color: #74808d;
+  font-size: 11px;
+}
+
+.write-off-balance strong {
+  overflow-wrap: anywhere;
+  color: #26323d;
+  font-size: 20px;
+}
+
+.write-off-form .write-off-hint {
+  margin-top: 15px;
+  color: #74808d;
+  line-height: 1.5;
+}
+
+.write-off-load-error {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 15px;
+  color: #b44750;
+  font-size: 12px;
+}
+
+.write-off-form .write-off-error {
+  margin: 20px 0 0;
+  padding: 12px 15px;
+  border: 1px solid #f2d1d5;
+  border-radius: 8px;
+  color: #b44750;
+  background: #fff7f8;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.inventory-movements-table {
+  min-width: 1250px;
+}
+
+.inventory-movements-table time {
+  display: grid;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.inventory-movements-table .code-pill {
+  display: inline-block;
+  padding: 6px 10px;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.inventory-movements-table .movement-observation {
+  min-width: 180px;
+  max-width: 280px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.inventory-movements-pagination,
+.inventory-movements-pagination > div {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.inventory-movements-pagination {
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-top: 1px solid #eef1f4;
+  color: #74808d;
+  font-size: 12px;
+}
+
+@media (max-width: 640px) {
+  .write-off-balance { grid-template-columns: 1fr; }
+  .inventory-movements-pagination { align-items: flex-start; flex-direction: column; }
+}
