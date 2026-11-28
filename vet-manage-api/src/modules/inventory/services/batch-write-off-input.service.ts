@@ -3,16 +3,24 @@ import type { RegisterBatchWriteOffDto } from '../dtos/register-batch-write-off.
 export const WRITE_OFF_MESSAGES = {
   batchRequired: 'Debe seleccionar un lote válido',
   quantityInvalid: 'La cantidad debe ser un número entero mayor que cero',
-  reasonRequired: 'Debe seleccionar el motivo Daño o Pérdida',
+  reasonRequired: 'Debe seleccionar un motivo válido',
+  expirationRequired: 'El motivo Vencimiento solo aplica a lotes caducados',
   observationInvalid: 'La observación debe ser texto',
 } as const;
 
 type ValidBatchWriteOff = {
   batchId: string;
   quantity: number;
-  reason: 'Daño' | 'Pérdida';
+  reason: 'Daño' | 'Pérdida' | 'Vencimiento';
   observation: string | null;
 };
+
+const WRITE_OFF_REASONS = ['Daño', 'Pérdida', 'Vencimiento'] as const;
+type WriteOffReason = (typeof WRITE_OFF_REASONS)[number];
+
+function isWriteOffReason(reason: string): reason is WriteOffReason {
+  return WRITE_OFF_REASONS.includes(reason as WriteOffReason);
+}
 
 type WriteOffErrors = Partial<Record<keyof RegisterBatchWriteOffDto, string>>;
 type BatchWriteOffValidation =
@@ -34,12 +42,12 @@ export function validateBatchWriteOffInput(input: RegisterBatchWriteOffDto): Bat
   if (typeof quantity !== 'number' || !Number.isInteger(quantity) || quantity <= 0 || quantity > 2_147_483_647) {
     errors.quantity = WRITE_OFF_MESSAGES.quantityInvalid;
   }
-  if (reason !== 'Daño' && reason !== 'Pérdida') errors.reason = WRITE_OFF_MESSAGES.reasonRequired;
+  if (!isWriteOffReason(reason)) errors.reason = WRITE_OFF_MESSAGES.reasonRequired;
   if (input.observation != null && typeof input.observation !== 'string') {
     errors.observation = WRITE_OFF_MESSAGES.observationInvalid;
   }
 
-  if (Object.keys(errors).length > 0 || typeof quantity !== 'number' || (reason !== 'Daño' && reason !== 'Pérdida')) {
+  if (Object.keys(errors).length > 0 || typeof quantity !== 'number' || !isWriteOffReason(reason)) {
     return { valid: false, value: null, errors };
   }
   const observation = typeof input.observation === 'string' ? input.observation.trim() || null : null;

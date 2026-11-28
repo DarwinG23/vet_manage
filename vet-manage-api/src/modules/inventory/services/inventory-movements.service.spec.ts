@@ -7,7 +7,7 @@ const userId = '123e4567-e89b-42d3-a456-426614174001';
 const input = { batchId, quantity: 3, reason: 'Daño', observation: 'Envase roto' };
 
 function setup(availableQuantity = 20, stock = 30) {
-  const batch = { id: batchId, productId: 'product-1', availableQuantity, product: { isActive: true } };
+  const batch = { id: batchId, productId: 'product-1', availableQuantity, expirationDate: new Date('2026-11-25T00:00:00.000Z'), product: { isActive: true } };
   const movement = {
     id: 'movement-1', batchId: batchId, type: 'BAJA', quantity: input.quantity,
     stockBefore: availableQuantity, stockAfter: availableQuantity - input.quantity,
@@ -76,6 +76,26 @@ describe('InventoryMovementsService (HU-19a)', () => {
     const result = await service.registerWriteOff({ batchId, quantity: 2, reason: 'Pérdida' }, userId);
 
     expect(result.movement).toMatchObject({ reason: 'Pérdida', observation: null, previousBalance: 8, resultingBalance: 6 });
+  });
+
+  it('registra vencimiento solo cuando la fecha del lote ya pasó', async () => {
+    const { service, tx, movement } = setup(8, 8);
+    tx.inventoryMovement.create.mockResolvedValue({ ...movement, quantity: 3, reason: 'Vencimiento', stockBefore: 8, stockAfter: 5 });
+    tx.batch.updateManyAndReturn.mockResolvedValue([{ id: batchId, productId: 'product-1', availableQuantity: 5 }]);
+    tx.product.updateManyAndReturn.mockResolvedValue([{ id: 'product-1', stock: 5 }]);
+
+    const result = await service.registerWriteOff({ batchId, quantity: 3, reason: 'Vencimiento' }, userId);
+
+    expect(result.movement).toMatchObject({ reason: 'Vencimiento', previousBalance: 8, resultingBalance: 5 });
+  });
+
+  it('rechaza vencimiento para un lote vigente', async () => {
+    const { service, tx } = setup();
+    tx.batch.findUnique.mockResolvedValue({ id: batchId, productId: 'product-1', availableQuantity: 20, expirationDate: new Date('2999-12-31T00:00:00.000Z'), product: { isActive: true } });
+
+    await expect(service.registerWriteOff({ batchId, quantity: 2, reason: 'Vencimiento' }, userId))
+      .rejects.toMatchObject({ statusCode: 409, message: 'El lote todavía no ha caducado' });
+    expect(tx.batch.updateManyAndReturn).not.toHaveBeenCalled();
   });
 
   it('rechaza datos inválidos antes de abrir una transacción', async () => {

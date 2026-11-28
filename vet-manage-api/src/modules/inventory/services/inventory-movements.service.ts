@@ -31,10 +31,15 @@ export class InventoryMovementsService {
       return await this.prisma.$transaction(async (tx) => {
         const existing = await tx.batch.findUnique({
           where: { id: batchId },
-          select: { id: true, availableQuantity: true, product: { select: { isActive: true } } },
+          select: { id: true, availableQuantity: true, expirationDate: true, product: { select: { isActive: true } } },
         });
         if (!existing) throw ApiException.notFound('Lote no encontrado');
         if (!existing.product.isActive) throw ApiException.conflict('El producto del lote está inactivo');
+        if (validation.value.reason === 'Vencimiento') {
+          const today = new Date().toISOString().slice(0, 10);
+          const expirationDate = existing.expirationDate.toISOString().slice(0, 10);
+          if (expirationDate >= today) throw ApiException.conflict('El lote todavía no ha caducado');
+        }
         if (existing.availableQuantity === 0) throw ApiException.conflict('El lote no tiene unidades disponibles');
         if (quantity > existing.availableQuantity) {
           throw ApiException.conflict('La cantidad solicitada supera las existencias disponibles');

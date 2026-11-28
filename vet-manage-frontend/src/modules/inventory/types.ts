@@ -117,7 +117,7 @@ export type ExpirationAlert = {
 export type BatchWriteOffDraft = {
   batchId: string;
   quantity: number;
-  reason: 'Daño' | 'Pérdida';
+  reason: 'Daño' | 'Pérdida' | 'Vencimiento';
   observation?: string;
 };
 

@@ -14,6 +14,13 @@ type WriteOffValidation =
   | { valid: true; value: BatchWriteOffDraft }
   | { valid: false; errors: BatchWriteOffFieldErrors };
 
+const WRITE_OFF_REASONS = ['Daño', 'Pérdida', 'Vencimiento'] as const;
+type WriteOffReason = (typeof WRITE_OFF_REASONS)[number];
+
+function isWriteOffReason(reason: string): reason is WriteOffReason {
+  return WRITE_OFF_REASONS.includes(reason as WriteOffReason);
+}
+
 export function validateBatchWriteOffDraft(draft: BatchWriteOffFormInput, batch?: ProductBatch): WriteOffValidation {
   const errors: BatchWriteOffFieldErrors = {};
   const rawQuantity = draft.quantity.trim();
@@ -27,9 +34,13 @@ export function validateBatchWriteOffDraft(draft: BatchWriteOffFormInput, batch?
   } else if (batch && quantity > batch.availableQuantity) {
     errors.quantity = 'La cantidad solicitada supera las existencias disponibles';
   }
-  if (draft.reason !== 'Daño' && draft.reason !== 'Pérdida') errors.reason = 'Debe seleccionar el motivo Daño o Pérdida';
+  if (!isWriteOffReason(draft.reason)) {
+    errors.reason = 'Debe seleccionar un motivo válido';
+  } else if (draft.reason === 'Vencimiento' && batch && batch.expirationStatus !== 'EXPIRED') {
+    errors.reason = 'El motivo Vencimiento solo aplica a lotes caducados';
+  }
 
-  if (Object.keys(errors).length > 0 || (draft.reason !== 'Daño' && draft.reason !== 'Pérdida')) {
+  if (Object.keys(errors).length > 0 || !isWriteOffReason(draft.reason)) {
     return { valid: false, errors };
   }
   const observation = draft.observation.trim();

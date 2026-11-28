@@ -43,7 +43,13 @@ describe('Validación del formulario de bajas HU-19a', () => {
     expect(validateBatchWriteOffDraft({ productId: '', batchId: '', quantity: '', reason: '', observation: '' }))
       .toMatchObject({ valid: false, errors: { productId: expect.any(String), batchId: expect.any(String), quantity: expect.any(String), reason: expect.any(String) } });
   });
-  it.each(['', 'Vencimiento', 'Otro'])('rechaza el motivo %s', (reason) => {
+  it.each(['', 'Otro'])('rechaza el motivo %s', (reason) => {
     expect(validateBatchWriteOffDraft({ ...draft, reason }, batch)).toMatchObject({ valid: false, errors: { reason: expect.any(String) } });
+  });
+  it('permite Vencimiento únicamente para un lote caducado', () => {
+    expect(validateBatchWriteOffDraft({ ...draft, reason: 'Vencimiento' }, { ...batch, expirationStatus: 'EXPIRED' }))
+      .toMatchObject({ valid: true, value: { reason: 'Vencimiento' } });
+    expect(validateBatchWriteOffDraft({ ...draft, reason: 'Vencimiento' }, batch))
+      .toMatchObject({ valid: false, errors: { reason: 'El motivo Vencimiento solo aplica a lotes caducados' } });
   });
 });

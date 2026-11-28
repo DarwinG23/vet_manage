@@ -170,7 +170,8 @@ export function BatchWriteOffForm({ products, onSubmit }: Props) {
               <select aria-label="Motivo" value={draft.reason} onChange={(event) => update('reason', event.target.value)} aria-invalid={Boolean(errors.reason)} aria-describedby={errors.reason ? 'write-off-reason-error' : undefined}>
                 <option value="">Selecciona el motivo</option>
                 <option value="Daño">Daño</option>
-                <option value="Pérdida">Pérdida</option>
+              <option value="Pérdida">Pérdida</option>
+              <option value="Vencimiento">Vencimiento</option>
               </select>
               {errors.reason && <small id="write-off-reason-error" className="field-error" role="alert">{errors.reason}</small>}
             </label>

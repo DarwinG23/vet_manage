@@ -114,7 +114,7 @@ describe('Registro de baja HU-19a', () => {
     await user.click(await screen.findByRole('button', { name: 'Registrar baja' }));
     expect(screen.getByText('Debe seleccionar un producto')).toBeInTheDocument();
     expect(screen.getByText('Debe seleccionar un lote válido')).toBeInTheDocument();
-    expect(screen.getByText('Debe seleccionar el motivo Daño o Pérdida')).toBeInTheDocument();
+    expect(screen.getByText('Debe seleccionar un motivo válido')).toBeInTheDocument();
     expect(inventoryApi.registerBatchWriteOff).not.toHaveBeenCalled();
   });
 

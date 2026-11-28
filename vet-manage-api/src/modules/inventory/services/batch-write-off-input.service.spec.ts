@@ -5,7 +5,7 @@ const batchId = '123e4567-e89b-42d3-a456-426614174000';
 const valid = { batchId, quantity: 3, reason: 'Daño', observation: 'Envase roto' };
 
 describe('Validación de bajas de lote (HU-19a)', () => {
-  it.each(['Daño', 'Pérdida'])('acepta el motivo %s y normaliza la observación', (reason) => {
+  it.each(['Daño', 'Pérdida', 'Vencimiento'])('acepta el motivo %s y normaliza la observación', (reason) => {
     expect(validateBatchWriteOffInput({ ...valid, reason, observation: '  Envase roto  ' }))
       .toEqual({ valid: true, value: { ...valid, reason, observation: 'Envase roto' }, errors: {} });
   });
@@ -32,7 +32,7 @@ describe('Validación de bajas de lote (HU-19a)', () => {
       .toMatchObject({ valid: false, errors: { batchId: WRITE_OFF_MESSAGES.batchRequired } });
   });
 
-  it.each([undefined, null, '', 'Otro', 'Vencimiento'])('rechaza un motivo fuera de HU-19a: %s', (reason) => {
+  it.each([undefined, null, '', 'Otro'])('rechaza un motivo fuera de HU-19a: %s', (reason) => {
     expect(validateBatchWriteOffInput({ ...valid, reason }))
       .toMatchObject({ valid: false, errors: { reason: WRITE_OFF_MESSAGES.reasonRequired } });
   });
